@@ -197,6 +197,8 @@ Measured on the author's Windows machine with `python -m eval.evaluate run --bas
 
 ### 2. Abstention signals (label: answerable and gold evidence in the top-3; 66/100 safe)
 
+Offline stand-ins (hashing embedder, mock reranker); the figures below are from this run. Real-model results follow.
+
 | Confidence model | AUROC ↑ | AURC ↓ | Brier ↓ | ECE (pooled) ↓ |
 |---|---|---|---|---|
 | **Combined (9 features)** | **0.854** [0.75, 0.95] | 0.146 | **0.135** | 0.046 |
@@ -216,6 +218,37 @@ Measured on the author's Windows machine with `python -m eval.evaluate run --bas
   <img src="docs/figures/risk_coverage.png" width="58%" alt="Risk-coverage curves of each confidence model, pooled over test folds"/>
   <img src="docs/figures/reliability.png" width="38%" alt="Reliability diagram of the combined confidence model"/>
 </p>
+
+#### Real models (bge-small + MS MARCO cross-encoder; 68/100 safe, 200 splits, author's Windows run)
+
+| Confidence model | AUROC ↑ | AURC ↓ | Brier ↓ | ECE ↓ |
+|---|---|---|---|---|
+| Combined (9 features) | 0.911 [0.81, 0.98] | 0.097 | 0.114 | 0.142 |
+| **Platt: dense top-1** | **0.933** [0.87, 0.99] | **0.087** | **0.104** | 0.133 |
+| Platt: CE margin | 0.857 | 0.119 | 0.156 | 0.181 |
+| Platt: CE top-1 | 0.831 | 0.136 | 0.142 | 0.144 |
+| Platt: RRF top-1 | 0.764 | 0.197 | 0.164 | **0.070** |
+
+| α | Method | Test coverage | Test selective risk | **Violation rate** |
+|---|---|---|---|---|
+| 0.05 | ERM | 0.461 | 0.057 | **49.5%** |
+| 0.05 | LTT | 0.000 (needs ≥ 45 answered) | — | 0.0% |
+| 0.1 | ERM | 0.637 | 0.096 | **46.5%** |
+| 0.1 | LTT | 0.000 (needs ≥ 22 answered) | — | 0.0% |
+| 0.2 | ERM | 0.790 | 0.174 | **34.5%** |
+| 0.2 | LTT | 0.326 [0.00, 0.77] | 0.091 | **1.5%** (abstains on everything in 44% of splits) |
+
+* With real models, the abstention signal improves a lot: AUROC 0.854 → 0.911 for the combined model, and the single
+  feature **dense top-1 (AUROC 0.933) is at least as good as the 9-feature model** (0.911). The intervals overlap
+  heavily, so the data cannot separate them, and the logistic model with 9 features on 40 training items probably
+  overfits. A one-feature Platt model is the simpler choice here.
+* The combined model is *less* well calibrated than offline (ECE 0.142 vs 0.046), again consistent with overfitting
+  on small training folds. Calibration is a separate property from ranking quality.
+* LTT at α = 0.2 now certifies something real: coverage 0.326 (versus 0.108 offline) at test risk 0.091 and a 1.5%
+  violation rate, under δ = 0.1. ERM answers more (0.790) but exceeds the target in about 35% of splits.
+* At α ≤ 0.1, 30 calibration items are still too few to certify anything, so LTT abstains on everything.
+* The only two retrieval misses (`eval_031`, `eval_085`) are noted in the report; with 2 of 100 items the "unsafe
+  because retrieval failed" class is too small to analyse.
 
 ### 3. End to end: standard RAG vs selective RAG (α = 0.2, δ = 0.1)
 
