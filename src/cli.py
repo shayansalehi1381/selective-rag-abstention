@@ -23,8 +23,9 @@ import json
 import logging
 import math
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Sequence, TextIO
+from typing import Any, Sequence, TextIO
 
 import numpy as np
 
@@ -42,8 +43,25 @@ OFFLINE_BACKENDS = ("hashing", "mock")
 # ---------------------------------------------------------------------------
 
 
-def build(args: argparse.Namespace) -> tuple[SelectiveRAGPipeline, list[str]]:
-    """Build the pipeline and its gate. Returns ``(pipeline, warnings)``."""
+@dataclass
+class Built:
+    """Everything a front end (CLI or server) needs: the pipeline, plus what recalibration needs."""
+
+    pipeline: SelectiveRAGPipeline
+    warnings: list[str] = field(default_factory=list)
+    eval_set: Any = None  # eval.schemas.EvalSet, or None when no eval set is available
+    calibration_retriever: Any = None  # retriever over the eval-set corpus
+    corpus: dict[str, Any] = field(default_factory=dict)  # path, num_chunks, sha256
+
+
+def apply_offline(args: argparse.Namespace) -> None:
+    """``--offline``: hashing embedder + mock reranker + mock reader (no network, no weights)."""
+    if getattr(args, "offline", False):
+        args.embedder, args.reranker, args.generator = "hashing", "mock", "mock"
+
+
+def build(args: argparse.Namespace) -> Built:
+    """Build the pipeline and its gate (from ``--policy``, startup calibration, or none)."""
     from eval.e2e_eval import fit_e2e_policy, score_items
     from eval.evaluate import build_pipeline
     from eval.schemas import EvalSet, corpus_fingerprint
@@ -64,6 +82,7 @@ def build(args: argparse.Namespace) -> tuple[SelectiveRAGPipeline, list[str]]:
         return RerankingRetriever(first, reranker, retrieve_k=args.retrieve_k) if reranker is not None else first
 
     retriever = make_retriever(chunks)
+    cal_retriever = None
     try:
         generator = Generator(args.generator, args.generator_model, base_url=args.base_url,
                               allow_fallback=not args.strict_generator,
@@ -97,7 +116,11 @@ def build(args: argparse.Namespace) -> tuple[SelectiveRAGPipeline, list[str]]:
                         "will be abstained. Use --calibrate erm, a larger α, or more calibration data")
     pipeline = SelectiveRAGPipeline(retriever, generator, policy, k_ctx=args.k_ctx, top_k=max(args.show, args.k_ctx),
                                     forced=args.forced_reader)
-    return pipeline, warnings
+    if eval_set is not None and cal_retriever is None:
+        cal_retriever = (retriever if fingerprint == eval_set.corpus.sha256
+                         else make_retriever(load_chunks_jsonl(eval_set.corpus.path)))
+    return Built(pipeline, warnings, eval_set, cal_retriever,
+                 {"path": str(corpus_path), "num_chunks": len(chunks), "sha256": fingerprint})
 
 
 # ---------------------------------------------------------------------------
@@ -301,11 +324,23 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="selective-rag", description="Selective RAG with calibrated abstention.")
     parser.add_argument("-v", "--verbose", action="store_true")
     sub = parser.add_subparsers(dest="command", required=True)
-    for name, help_text in (("ask", "answer one question"), ("chat", "interactive question loop")):
+    for name, help_text in (("ask", "answer one question"), ("chat", "interactive question loop"),
+                            ("serve", "run the REST API (needs the 'serving' extra)")):
         p = sub.add_parser(name, help=help_text)
         if name == "ask":
             p.add_argument("question")
             p.add_argument("--json", action="store_true", help="print machine-readable JSON")
+        if name == "serve":
+            p.add_argument("--host", default="127.0.0.1", help="bind address (use 0.0.0.0 to expose)")
+            p.add_argument("--port", type=int, default=8000)
+            p.add_argument("--admin-token-env", default="SRAG_ADMIN_TOKEN",
+                           help="env var holding the token for POST /v1/calibrate (endpoint disabled if unset)")
+            p.add_argument("--max-concurrency", type=int, default=4, help="concurrent reader (LLM) calls")
+            p.add_argument("--reader-timeout", type=float, default=30.0,
+                           help="seconds to wait for a reader slot before answering 429")
+            p.add_argument("--log-level", default="info")
+        p.add_argument("--offline", action="store_true",
+                       help="hashing embedder + mock reranker + mock reader (no network, no model weights)")
         p.add_argument("--corpus", type=Path, default=None, help="chunks.jsonl to query (default: the eval corpus)")
         p.add_argument("--eval-set", type=Path, default=DEFAULT_EVAL_SET, help="used to calibrate the gate")
         gate = p.add_mutually_exclusive_group()
@@ -335,7 +370,11 @@ def main(argv: Sequence[str] | None = None, *, stdin: TextIO | None = None, stdo
     stdin, stdout = stdin or sys.stdin, stdout or sys.stdout
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.WARNING,
                         format="%(levelname)s %(name)s: %(message)s")
-    pipeline, warnings = build(args)
+    apply_offline(args)
+    if args.command == "serve":
+        return serve(args)
+    built = build(args)
+    pipeline, warnings = built.pipeline, built.warnings
     style = Style(color=not args.no_color and getattr(stdout, "isatty", lambda: False)())
     for w in warnings:
         print(style.yellow(f"⚠ {w}"), file=sys.stderr)
@@ -349,6 +388,29 @@ def main(argv: Sequence[str] | None = None, *, stdin: TextIO | None = None, stdo
             print(render(resp, pipeline.policy, style=style, show=args.show), file=stdout)
         return 0
     return run_chat(pipeline, style=style, show=args.show, stdin=stdin, stdout=stdout)
+
+
+def serve(args: argparse.Namespace) -> int:
+    """Build the pipeline once, then hand a ready service to uvicorn (one worker per process)."""
+    import os
+
+    try:
+        import uvicorn
+
+        from src.server import PipelineService, ServerSettings, create_app
+    except ImportError as exc:
+        raise SystemExit(f"serving needs the 'serving' extra: pip install -e '.[serving]' ({exc})") from exc
+    logging.getLogger().setLevel(args.log_level.upper())
+    built = build(args)
+    for w in built.warnings:
+        logger.warning(w)
+    settings = ServerSettings(admin_token=os.environ.get(args.admin_token_env) or None,
+                              max_concurrency=args.max_concurrency, reader_timeout_s=args.reader_timeout)
+    service = PipelineService.from_built(built, settings)
+    if settings.admin_token is None:
+        logger.warning("%s is not set: POST /v1/calibrate is disabled", args.admin_token_env)
+    uvicorn.run(create_app(service), host=args.host, port=args.port, workers=1, log_level=args.log_level)
+    return 0
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 # Selective RAG with Calibrated Abstention
 
-![tests](https://img.shields.io/badge/tests-320%20passed%20offline-brightgreen)
+[![CI](https://github.com/shayansalehi1381/selective-rag-abstention/actions/workflows/ci.yml/badge.svg)](https://github.com/shayansalehi1381/selective-rag-abstention/actions/workflows/ci.yml)
+![tests](https://img.shields.io/badge/tests-357%20passed%20offline-brightgreen)
 ![python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
 
@@ -32,6 +33,7 @@ finite-sample, distribution-free guarantee on the error rate among answered ques
 - [Findings and limitations](#findings-and-limitations)
 - [Reproducibility](#reproducibility)
 - [Interactive CLI](#interactive-cli)
+- [Serving (REST API)](#serving-rest-api)
 - [Project layout](#project-layout)
 - [Roadmap](#roadmap)
 - [References](#references)
@@ -140,6 +142,7 @@ number of errors among them.
 | 4 | [`src/abstention.py`](src/abstention.py), [`eval/abstention_eval.py`](eval/abstention_eval.py) | Features, logistic calibrator, ERM / LTT thresholds, JSON-persisted `AbstentionPolicy`; AUROC / AURC / ECE / risk-coverage benchmark |
 | 5 | [`src/generator.py`](src/generator.py), [`src/pipeline.py`](src/pipeline.py), [`eval/e2e_eval.py`](eval/e2e_eval.py) | Citation-grounded reader (validated citations and verbatim quotes, retry, abstention), end-to-end pipeline, standard vs selective RAG benchmark |
 | 6 | [`src/cli.py`](src/cli.py) | Interactive CLI: scores, gate verdict, cited answer |
+| 7 | [`src/server.py`](src/server.py) | FastAPI service: `/v1/query`, `/v1/calibrate` (admin), `/v1/info`, `/health`; thread-safe, one worker per process; Docker image and CI |
 
 Every model-backed component has a deterministic offline stand-in. That keeps the whole system
 testable without network access or model weights. A stand-in is only ever used through an
@@ -238,7 +241,7 @@ pip install -r requirements.txt
 
 ### Offline: no network, no API keys, no model weights
 ```bash
-python -m pytest -q                       # 320 passed, 3 skipped (opt-in integration tests)
+python -m pytest -q                       # 357 passed, 3 skipped (opt-in integration tests)
 
 # regenerate the eval set (byte-identical to the committed file)
 python -m eval.synthetic_gen generate --offline --output data/eval/eval_set.json
@@ -299,24 +302,115 @@ Backends: embedder hashing-256 · reranker mock-lexical-v1 · generator mock-ext
 Without `--policy`, the gate is calibrated at startup on the committed eval set (ERM, α = 0.2
 by default). If you query a different corpus, the CLI warns that τ does not transfer.
 
+## Serving (REST API)
+
+```bash
+pip install -e ".[serving]"
+export SRAG_ADMIN_TOKEN=change-me            # enables POST /v1/calibrate (disabled when unset)
+selective-rag serve --offline                # 127.0.0.1:8000, offline stand-ins; drop --offline for real models
+#   or: docker build -t selective-rag . && docker run -p 8000:8000 -e SRAG_ADMIN_TOKEN=change-me selective-rag
+```
+The OpenAPI docs are at `http://127.0.0.1:8000/docs`. Bind to `--host 0.0.0.0` only when you
+mean to expose the service.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /health` | `200 {"status":"ok"}` when ready, `503 {"status":"starting"}` while models load |
+| `GET /v1/info` | version, backends (and any fallback reasons), corpus fingerprint, active policy, limits |
+| `POST /v1/query` | answer or abstain: stage, gate verdict, citations with verbatim quotes, reader context, scores, latency |
+| `POST /v1/calibrate` | recalibrate τ with ERM or LTT on the eval set (`X-Admin-Token` required) |
+
+```bash
+curl -s -X POST localhost:8000/v1/query -H 'Content-Type: application/json' \
+     -d '{"query": "For how many epochs is SefiLens trained?", "include_scores": false}'
+```
+```json
+{
+  "answer": "train SefiLens for 30 epochs",
+  "abstained": false,
+  "abstention_stage": null,
+  "gate": {"confidence": 0.939, "tau": 0.822, "method": "erm", "alpha": 0.2,
+           "guarantee": null, "statistical_guarantee": false, "passed": true},
+  "citations": [{"chunk_id": "synth-0007::0004",
+                 "title": "SefiLens: Uncertainty-Aware Dense Retrieval in Legal Documents",
+                 "quotes": ["We train SefiLens for 30 epochs."]}],
+  "context_chunk_ids": ["synth-0007::0004", "synth-0007::0007", "synth-0007::0002"],
+  "latency_ms": {"retrieve": 10.3, "generate": 0.2, "total": 10.5},
+  "backends": {"embedder": "hashing-256", "reranker": "mock-lexical-v1", "generator": "mock-extractive-v1"}
+}
+```
+(abridged; `request_id` and `reader_reason` omitted.) An out-of-domain question, such as
+*"Which mortgage refinancing option minimises closing fees?"*, returns
+`"abstained": true, "abstention_stage": "policy"` with `g(x) = 0.015 < τ`, and the reader is never called.
+
+```bash
+curl -s -X POST localhost:8000/v1/query -H 'Content-Type: application/json' \
+     -d '{"query": "...", "gate": false, "forced_reader": true}'                 # standard RAG, for comparison
+curl -s -X POST localhost:8000/v1/calibrate -H 'Content-Type: application/json' \
+     -H "X-Admin-Token: $SRAG_ADMIN_TOKEN" -d '{"method": "ltt", "alpha": 0.2, "delta": 0.1}'
+curl -s localhost:8000/v1/info
+```
+A recalibration reports whether the new τ carries a guarantee. With the 100-item eval set, LTT
+often certifies nothing (`"tau": "inf"`, with a `reason`). The service then abstains on
+everything rather than pretend.
+
+**Errors** share one envelope, `{"error": {"code", "message", "request_id"}}`:
+
+| Status | When |
+|---|---|
+| 422 | invalid request (empty or oversized query, unknown fields, out-of-range `k_ctx` / α) |
+| 401 / 403 | missing or wrong admin token, or calibration disabled |
+| 409 | a calibration is already running |
+| 429 | all reader slots are busy (`Retry-After`) |
+| 503 | the service is not ready yet |
+| 500 | internal error; no internals in the body, the traceback is logged with the request id |
+
+Every response carries `X-Request-ID`; an incoming one is echoed back.
+
+**Concurrency model.**
+- Endpoints run in FastAPI's thread pool. The pipeline is shared but only read, and per-request
+  settings (`k_ctx`, `gate`, `forced_reader`) are arguments, never shared state.
+- The active policy is an immutable object behind one reference. Each request reads it once, and
+  a recalibration swaps it atomically, so no request mixes two thresholds.
+- A semaphore (`--max-concurrency`, default 4) caps concurrent LLM calls. Gated queries never take
+  a slot.
+- Run **one worker per process**: each worker holds its own models and its own τ. Scale with
+  replicas.
+
+**Measured throughput (offline stand-ins, 4 CPUs, keep-alive client, 200 requests):**
+
+| Clients | req/s | p50 | p95 |
+|---|---|---|---|
+| 1 | 65 | 14.6 ms | 23.3 ms |
+| 4 | 67 | 60.1 ms | 76.6 ms |
+| 16 | 67 | 235.6 ms | 288.6 ms |
+
+Throughput saturates at about 66 req/s whatever the concurrency, because the offline mock
+reranker is pure Python and holds the GIL. With real backends the profile differs: torch releases
+the GIL during inference, and LLM calls are I/O-bound and capped by the reader semaphore.
+
 ## Project layout
 ```
-src/            data_loader · retriever · reranker · abstention · llm · generator · pipeline · cli · server (stub)
+src/            data_loader · retriever · reranker · abstention · llm · generator · pipeline · cli · server
 eval/           schemas · synthetic_gen · evaluate · abstention_eval · e2e_eval
-tests/          one test module per component (320 offline tests)
+tests/          one test module per component (357 offline tests)
 data/eval/      eval_set.json + synthetic_corpus.jsonl (committed); benchmark reports (generated)
 docs/figures/   README figures (regenerate with eval.abstention_eval)
 ROADMAP.md      phase-by-phase plan, results and future work
+Dockerfile      CPU image (offline backends by default; --build-arg WITH_MODELS=true for real models)
+.github/        CI: lint, offline tests on Python 3.10/3.12/3.13, eval-set reproducibility, Docker smoke test
 ```
 
 ## Roadmap
-Phases 0–6 are complete; see [ROADMAP.md](ROADMAP.md). Next steps:
-- **Phase 7:** FastAPI service (`POST /query`), Docker image, CI.
+Phases 0–7 are complete; see [ROADMAP.md](ROADMAP.md). Next steps:
+- A run with real models (bge-small, the MS MARCO cross-encoder, Claude) to replace the offline numbers.
 - A larger LLM-generated eval set over the arXiv corpus, with paper-disjoint splits, so LTT can
   certify α ≤ 0.1.
 - Conformal risk control (E[risk] ≤ α) as a less conservative alternative.
-- NLI answer–evidence entailment and self-consistency as abstention features.
-- An LLM judge for semantic answer equivalence.
+- NLI answer–evidence entailment and self-consistency as abstention features; an LLM judge for
+  semantic answer equivalence.
+- Serving: share the calibrated τ across replicas (e.g. a policy store), an async LLM client,
+  and metrics (Prometheus).
 
 ## References
 - Lewis et al. (2020). *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks.* NeurIPS.

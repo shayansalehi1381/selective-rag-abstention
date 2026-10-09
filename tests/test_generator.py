@@ -276,3 +276,17 @@ def test_llm_clients_are_shared_with_benchmark_generation():
     import src.llm as llm
 
     assert sg.AnthropicClient is llm.AnthropicClient and sg.extract_json is llm.extract_json
+
+
+def test_cache_is_thread_safe(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+
+    ctx = make_chunks(PAPER, arxiv_id="p1")
+    path = tmp_path / "c.jsonl"
+    g = Generator("mock", cache_path=path)
+    qs = ["For how many epochs is ZenoRank trained?", "Which learning rate is used to optimise ZenoRank?"] * 25
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        answers = list(pool.map(lambda q: g.generate(q, ctx), qs))
+    assert len({a.answer for a in answers}) == 2
+    lines = path.read_text().splitlines()
+    assert len(lines) == len({json.loads(line)["key"] for line in lines}) == 2  # one line per key, no torn writes

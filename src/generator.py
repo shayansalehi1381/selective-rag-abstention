@@ -25,6 +25,7 @@ import hashlib
 import json
 import logging
 import re
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
@@ -300,6 +301,7 @@ class Generator:
         self.cache_path = Path(cache_path) if cache_path else None
         self._cache: dict[str, dict] = {}
         self.cache_hits = 0
+        self._lock = threading.RLock()  # guards the cache, the cache file and backend selection
         if self.cache_path and self.cache_path.exists():
             with self.cache_path.open(encoding="utf-8") as f:
                 for line in f:
@@ -317,6 +319,12 @@ class Generator:
         return self._reader
 
     def _load(self) -> MockGenerator | LLMGenerator:
+        if self._reader is not None:
+            return self._reader
+        with self._lock:
+            return self._load_locked()
+
+    def _load_locked(self) -> MockGenerator | LLMGenerator:
         if self._reader is None:
             try:
                 client = self._client
@@ -340,12 +348,19 @@ class Generator:
         payload = json.dumps([self.backend, PROMPT_VERSION, forced, question, [c.chunk_id for c in context]])
         return hashlib.sha256(payload.encode()).hexdigest()
 
+    def _cached(self, key: str) -> GeneratedAnswer | None:
+        with self._lock:
+            if key in self._cache:
+                self.cache_hits += 1
+                return GeneratedAnswer.model_validate(self._cache[key])
+        return None
+
     def generate(self, question: str, context: Sequence[Chunk], *, forced: bool = False) -> GeneratedAnswer:
         reader = self._load()
         key = self._key(question, context, forced)
-        if key in self._cache:
-            self.cache_hits += 1
-            return GeneratedAnswer.model_validate(self._cache[key])
+        hit = self._cached(key)
+        if hit is not None:
+            return hit
         try:
             ans = reader.generate(question, context, forced=forced)
         except Exception as exc:
@@ -354,11 +369,12 @@ class Generator:
                 ans = GeneratedAnswer.abstention(backend=reader.name, reason=f"error:{type(exc).__name__}",
                                                  forced=forced)
             else:  # the first real call failed (auth, network): switch the whole run to the mock
-                reader = self._fall_back(exc)
+                with self._lock:
+                    reader = self._reader if self._verified else self._fall_back(exc)
                 key = self._key(question, context, forced)
-                if key in self._cache:  # the mock's answer may already be cached from an earlier run
-                    self.cache_hits += 1
-                    return GeneratedAnswer.model_validate(self._cache[key])
+                hit = self._cached(key)  # the mock's answer may already be cached from an earlier run
+                if hit is not None:
+                    return hit
                 ans = reader.generate(question, context, forced=forced)
         self._verified = True
         self._store(key, ans)
@@ -366,11 +382,14 @@ class Generator:
 
     def _store(self, key: str, ans: GeneratedAnswer) -> None:
         value = ans.model_dump(mode="json")
-        self._cache[key] = value
-        if self.cache_path:
-            self.cache_path.parent.mkdir(parents=True, exist_ok=True)
-            with self.cache_path.open("a", encoding="utf-8") as f:
-                f.write(json.dumps({"key": key, "value": value}) + "\n")
+        with self._lock:
+            if key in self._cache:  # another thread produced it meanwhile: keep a single cache line
+                return
+            self._cache[key] = value
+            if self.cache_path:
+                self.cache_path.parent.mkdir(parents=True, exist_ok=True)
+                with self.cache_path.open("a", encoding="utf-8") as f:
+                    f.write(json.dumps({"key": key, "value": value}) + "\n")
 
 
 @dataclass(frozen=True)

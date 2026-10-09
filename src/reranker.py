@@ -24,6 +24,7 @@ Backends:
 from __future__ import annotations
 
 import dataclasses
+import functools
 import logging
 import math
 from dataclasses import dataclass
@@ -58,9 +59,11 @@ class RerankedDocument:
 # ---------------------------------------------------------------------------
 
 
-def trigrams(token: str) -> set[str]:
+@functools.lru_cache(maxsize=65536)
+def trigrams(token: str) -> frozenset[str]:
+    """Character trigrams of ``#token#`` (memoised: the vocabulary is small, and calls are hot)."""
     padded = f"#{token}#"
-    return {padded[i:i + 3] for i in range(len(padded) - 2)}
+    return frozenset(padded[i:i + 3] for i in range(len(padded) - 2))
 
 
 class MockCrossEncoder:

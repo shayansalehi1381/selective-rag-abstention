@@ -27,7 +27,7 @@
                                   g(x) ≥ τ̂_α ?  ── yes ─► Phase 5: generator (LLM) ─► ANSWER + cited chunks
                                                  └─ no ──► ABSTAIN ("insufficient evidence")
                                                    ▼
-             Phase 6: CLI, README, risk–coverage / calibration reports │ Phase 7 (future): FastAPI, Docker, CI
+             Phase 6: CLI, README, risk–coverage / calibration reports │ Phase 7: FastAPI service, Docker, CI
 ```
 
 ## Research questions
@@ -169,12 +169,33 @@
 - [x] Clean-up: public `trigrams` helper, current docstrings, tests that never write into the repo
       (320 offline tests)
 
-## Phase 7: Serving and engineering (future work)
-- [ ] `src/server.py` (documented stub today): FastAPI `POST /query` → `{answer | abstained, confidence, evidence[]}`,
-      `GET /health`. Pydantic schemas, with the index loaded once at startup.
-- [ ] Dockerfile (CPU), `make` targets, GitHub Actions CI (lint + offline tests)
-- [ ] Latency budget: retrieval p95 < 100 ms on a CPU for a corpus of about 10k chunks
-- **Deliverable:** `docker run` → a working API, documented in the README
+## Phase 7: Production serving and FastAPI microservice ✅
+- [x] `src/server.py`: FastAPI app factory (`create_app`) with the service injected through
+      `app.state` + `Depends`, built either in the lifespan hook or up front by `selective-rag serve`
+  - `POST /v1/query`: answer or abstention, stage, gate verdict (with a guarantee flag), citations with
+    verbatim quotes, reader context, rerank scores, per-stage latency
+  - `POST /v1/calibrate`: ERM / LTT recalibration of τ on the eval set. It needs `X-Admin-Token`
+    (`SRAG_ADMIN_TOKEN`, compared in constant time), returns 403 when no token is configured and
+    409 while a calibration is running
+  - `GET /health` (200 ready / 503 starting) and `GET /v1/info` (backends, fallbacks, corpus, policy)
+  - one JSON error envelope with a request id; 500s never leak internals
+- [x] Thread safety:
+  - `SelectiveRAGPipeline.answer` takes per-call overrides instead of mutating shared state
+  - the policy is swapped atomically, and each request snapshots one policy
+  - the `Generator` cache is locked
+  - a bounded reader semaphore returns 429 + `Retry-After`; gated queries need no slot
+- [x] `selective-rag serve` (default 127.0.0.1, one worker) and `--offline` for all CLI commands;
+      `serving` extra (fastapi, uvicorn, httpx)
+- [x] `Dockerfile` (CPU, non-root, healthcheck, offline by default, `WITH_MODELS=true` for real models)
+      and `.github/workflows/ci.yml`: lint, offline tests on Python 3.10 / 3.12 / 3.13, eval-set
+      reproducibility (`git diff --exit-code`), Docker build + smoke test
+- [x] 34 API tests plus override/lock unit tests (357 offline tests in total), verified on clean
+      Python 3.10 and 3.13 installs; live uvicorn smoke test with curl; load check (about 66 req/s
+      per process with offline stand-ins, bounded by the GIL-holding mock reranker)
+- Not verified here: the Docker build and the CI run itself (no Docker daemon or GitHub runner in
+  the development sandbox). The image's install and run path was reproduced in a clean venv.
+- [ ] Future: shared policy store across replicas, async LLM client, Prometheus metrics, auth for
+      `/v1/query`, and the real-model latency budget (retrieval p95 < 100 ms at ~10k chunks)
 
 ---
 

@@ -103,3 +103,28 @@ class TestPipeline:
         first = HybridRetriever(hashing_embedder).index(make_chunks(TEXTS))
         out = SelectiveRAGPipeline(first, Generator("mock")).answer(QUESTION)
         assert out.backends["reranker"] is None and "10 epochs" in out.answer
+
+
+class TestPerCallOverrides:
+    def test_overrides_do_not_mutate_the_pipeline(self, retriever):
+        pipe = SelectiveRAGPipeline(retriever, Generator("mock"), policy(math.inf), k_ctx=3)
+        out = pipe.answer(QUESTION, policy=None, k_ctx=1, forced=True)
+        assert not out.abstained and len(out.evidence) == 1  # gate disabled for this call only
+        assert pipe.k_ctx == 3 and pipe.forced is False and math.isinf(pipe.policy.tau)
+        assert pipe.answer(QUESTION).abstention_stage == "policy"  # the default policy is untouched
+
+    def test_reader_guard_wraps_only_the_reader(self, retriever):
+        entered = []
+
+        class Guard:
+            def __enter__(self):
+                entered.append(1)
+
+            def __exit__(self, *exc):
+                return False
+
+        pipe = SelectiveRAGPipeline(retriever, Generator("mock"), policy(math.inf))
+        pipe.answer(QUESTION, reader_guard=Guard())  # gated: no reader call, no guard
+        assert entered == []
+        pipe.answer(QUESTION, policy=None, reader_guard=Guard())
+        assert entered == [1]
