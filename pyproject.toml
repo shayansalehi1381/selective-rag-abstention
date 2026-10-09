@@ -1,0 +1,13 @@
+[project]
+name = "selective-rag-abstention"
+version = "0.1.0"
+description = "Selective RAG with calibrated abstention via conformal prediction."
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+    "integration: needs network access and/or downloaded model weights (opt-in, skipped when unavailable)",
+]

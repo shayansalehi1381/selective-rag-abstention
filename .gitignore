@@ -218,3 +218,38 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ---------------------------------------------------------------------------
+# Project-specific (selective-rag-abstention)
+# ---------------------------------------------------------------------------
+# Raw corpus: PDFs are re-downloadable via `python -m src.data_loader download`
+data/raw_pdfs/*
+!data/raw_pdfs/.gitkeep
+
+# Derived artefacts: chunks, embeddings, vector/BM25 indices
+data/processed/*
+!data/processed/.gitkeep
+indices/
+*.faiss
+*.index
+*.npy
+*.npz
+*.pkl
+
+# Model / tool caches
+.cache/
+hf_cache/
+.huggingface/
+.mypy_cache/
+
+# Secrets & local environments
+.env.*
+!.env.example
+venv/
+.venv/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
