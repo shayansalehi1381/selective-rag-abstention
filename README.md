@@ -232,6 +232,27 @@ Measured on the author's Windows machine with `python -m eval.evaluate run --bas
 - EM, F1 and key-fact are over answered answerable items.
 - *Violation* = share of splits whose test risk exceeds α.
 
+#### Real retriever and reranker, mock reader
+
+Same benchmark with `--embedder bge --reranker cross-encoder --strict-reranker --generator mock` (author's Windows run,
+200 splits). The reader is still the mock extractive one, so absolute accuracy stays a floor.
+
+| System | Coverage | Selective risk ↓ | Hallucination ↓ | Accuracy ↑ | Violation |
+|---|---|---|---|---|---|
+| Standard RAG | 1.000 | 0.711 | 1.000 | 0.289 | — |
+| RAG + reader self-abstention | 0.708 | 0.608 | 0.304 | 0.486 | — |
+| Selective RAG (ERM gate) | 0.298 | 0.181 | 0.036 | 0.524 | 43.0% |
+| Selective RAG (ERM) + self-abstention | 0.309 | 0.190 | 0.008 | 0.539 | 44.0% |
+| Selective RAG (LTT gate) | 0.003 | 0.333 | 0.001 | 0.301 | 1.0% |
+| Selective RAG (LTT) + self-abstention | 0.002 | 0.267 | 0.000 | 0.302 | 0.5% |
+
+The picture matches the offline run. The paired per-split drop in hallucination versus standard RAG is −0.96 for the
+ERM gate (100% of splits lower). ERM still violates the α = 0.2 target in about 43% of splits. LTT keeps violations at
+or below 1% but answers almost nothing at α = 0.2 (coverage 0.003, abstains on everything in 99% of splits); at
+α = 0.3 it reaches coverage 0.10 with 6.5% violations, and at α = 0.1 it abstains always. With a reader that is right
+on roughly 30% of questions, the certificate is simply not attainable at this calibration size. A real LLM reader
+is the missing piece for a fair LTT result.
+
 ## Findings and limitations
 
 - **Gating is what removes hallucination.** Reader self-abstention alone leaves 27% of
