@@ -58,7 +58,7 @@ class RerankedDocument:
 # ---------------------------------------------------------------------------
 
 
-def _trigrams(token: str) -> set[str]:
+def trigrams(token: str) -> set[str]:
     padded = f"#{token}#"
     return {padded[i:i + 3] for i in range(len(padded) - 2)}
 
@@ -131,13 +131,13 @@ class MockCrossEncoder:
         q_bigrams = {(a, b) for a, b in zip(q, q[1:])}
         d_bigrams = set(zip(d, d[1:]))
         bigram = len(q_bigrams & d_bigrams) / len(q_bigrams) if q_bigrams else 0.0
-        d_grams = [_trigrams(t) for t in sorted(d_set)]
+        d_grams = [trigrams(t) for t in sorted(d_set)]
         fuzzy_scores = []
         for t in q_terms:
             if t in d_set:
                 fuzzy_scores.append(1.0)
                 continue
-            tg = _trigrams(t)
+            tg = trigrams(t)
             fuzzy_scores.append(max((len(tg & g) / len(tg | g) for g in d_grams), default=0.0))
         fuzzy = float(np.mean(fuzzy_scores))
         return {"coverage": coverage, "proximity": proximity, "bigram": bigram, "fuzzy": fuzzy}

@@ -27,7 +27,7 @@
                                   g(x) ≥ τ̂_α ?  ── yes ─► Phase 5: generator (LLM) ─► ANSWER + cited chunks
                                                  └─ no ──► ABSTAIN ("insufficient evidence")
                                                    ▼
-             Phase 6: risk–coverage, AURC, calibration │ Phase 7: FastAPI service, Docker, CI
+             Phase 6: CLI, README, risk–coverage / calibration reports │ Phase 7 (future): FastAPI, Docker, CI
 ```
 
 ## Research questions
@@ -152,19 +152,25 @@
 - [ ] Scale the eval set (Phase 2 LLM engine), with no paper shared across splits, so LTT can certify α ≤ 0.2
 - [ ] LLM-judge for semantic answer equivalence; NLI answer–evidence entailment as an abstention feature
 
-## Phase 6: Evaluation
-- [ ] `eval/evaluate.py`:
-  - risk–coverage curves and **AURC** / E-AURC (Geifman & El-Yaniv)
-  - selective accuracy at fixed coverage (50%, 80%, 90%)
-  - **ECE** and reliability diagrams for g(x)
-  - empirical risk vs target α over R random calibration/test splits, with error bars
-    (the guarantee check)
-  - AUROC for separating answerable from unanswerable questions
-- [ ] All figures produced by scripts (matplotlib), fixed seeds, results logged to JSON
-- **Deliverable:** `eval/results/` holding figures and tables, and a written results section in the README
+## Phase 6: Production polish, CLI and research README ✅
+- [x] Evaluation deliverables, folded in from the original "Evaluation" phase and delivered across
+      Phases 2–5: AURC / E-AURC, selective accuracy at fixed coverage, ECE and reliability diagrams,
+      empirical risk vs α over 200 random splits (violation rate), AUROC. All are script-generated
+      with fixed seeds and logged to JSON, and they are byte-identical across `PYTHONHASHSEED`
+- [x] `src/cli.py` (`selective-rag ask|chat`): retrieval/rerank score panel, gate verdict g(x) vs τ with
+      its strongest signals, cited answer with verbatim quotes, `--json`. The gate comes from a saved
+      policy or is calibrated at startup (default ERM α = 0.2, labelled "no statistical guarantee";
+      `--calibrate ltt` for the guaranteed gate), with a warning when τ is applied to a different corpus
+- [x] Research `README.md`: motivation, Mermaid architecture of the two-stage abstention flow,
+      formulation (ERM vs LTT, n_min), benchmark tables (retrieval, abstention, end-to-end), figures in
+      `docs/figures/`, findings and limitations, offline and real-model reproduction commands
+- [x] Packaging: `pyproject.toml` build system, optional extras (`models`, `llm`, `plots`, `dev`),
+      `selective-rag` console script; version 0.6.0
+- [x] Clean-up: public `trigrams` helper, current docstrings, tests that never write into the repo
+      (320 offline tests)
 
-## Phase 7: Serving and engineering
-- [ ] `src/server.py`: FastAPI `POST /query` → `{answer | abstained, confidence, evidence[]}`,
+## Phase 7: Serving and engineering (future work)
+- [ ] `src/server.py` (documented stub today): FastAPI `POST /query` → `{answer | abstained, confidence, evidence[]}`,
       `GET /health`. Pydantic schemas, with the index loaded once at startup.
 - [ ] Dockerfile (CPU), `make` targets, GitHub Actions CI (lint + offline tests)
 - [ ] Latency budget: retrieval p95 < 100 ms on a CPU for a corpus of about 10k chunks

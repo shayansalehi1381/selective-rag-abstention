@@ -47,6 +47,7 @@ from eval.abstention_eval import _jsonable, _summary, stratified_splits
 from eval.evaluate import add_pipeline_args, build_pipeline
 from eval.schemas import EvalSet, corpus_fingerprint
 from src.abstention import (
+    AbstentionPolicy,
     LogisticCalibrator,
     coverage_grid,
     erm_threshold,
@@ -192,6 +193,34 @@ def _labels(rows: Sequence[dict], reader: str) -> np.ndarray:
 def _gate_scores(probs: np.ndarray, rows: Sequence[dict], reader: str) -> np.ndarray:
     """A reader abstention can never be 'answered', so it gets a score below any threshold."""
     return np.where([r[reader]["answered"] for r in rows], probs, -1.0)
+
+
+def fit_e2e_policy(rows: Sequence[dict], eval_set: EvalSet, *, reader: str = "free", method: str = "erm",
+                   alpha: float = 0.2, delta: float = 0.10, seed: int = 0) -> AbstentionPolicy:
+    """Deployable gate calibrated on end-to-end correctness, using the protocol of the benchmark.
+
+    The model is fitted on the train fold of split 0 and τ is chosen on its calibration
+    fold, with ERM (no guarantee) or LTT (``P(risk ≤ α) ≥ 1 − δ``). ``reader`` is the
+    reader mode the gate will sit in front of: ``"free"`` (abstain-allowed) or
+    ``"forced"``.
+    """
+    if method not in ("erm", "ltt"):
+        raise ValueError("method must be 'erm' or 'ltt'")
+    train, cal, _ = stratified_splits(eval_set.items, n_splits=1, seed=seed)[0]
+    tr, ca = [rows[i] for i in train], [rows[i] for i in cal]
+    features = list(rows[0]["features"])
+    model = LogisticCalibrator(features).fit([r["features"] for r in tr], _labels(tr, reader))
+    s_ca = _gate_scores(model.predict_proba([r["features"] for r in ca]), ca, reader)
+    y_ca = _labels(ca, reader)
+    if method == "erm":
+        th = erm_threshold(s_ca, y_ca, alpha)
+    else:
+        grid = coverage_grid(model.predict_proba([r["features"] for r in tr]), len(ca), alpha, delta)
+        th = ltt_threshold(s_ca, y_ca, alpha, delta, grid=grid)
+    meta = {**th.to_dict(), "reader": reader, "label": "end-to-end correctness (F1>=0.5 and key-fact match)",
+            "guarantee": f"P(risk <= {alpha:g}) >= {1 - delta:g}" if method == "ltt" else None,
+            "corpus_sha256": eval_set.corpus.sha256, "seed": seed, "n_train": len(tr), "n_cal": len(ca)}
+    return AbstentionPolicy(model, th.tau, meta)
 
 
 def run_e2e_benchmark(rows: Sequence[dict], eval_set: EvalSet, *, alphas: Sequence[float] = DEFAULT_ALPHAS,

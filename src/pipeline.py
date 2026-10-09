@@ -41,6 +41,7 @@ class PipelineResponse:
     backends: dict[str, str | None]
     latency_ms: dict[str, float] = field(default_factory=dict)
     generation: GeneratedAnswer | None = None
+    ranked: list[RetrievalResult] = field(default_factory=list)  # full reranked list (top_k), for inspection
 
 
 class SelectiveRAGPipeline:
@@ -70,7 +71,7 @@ class SelectiveRAGPipeline:
         else:
             gate_open = True
         common = dict(query=query, confidence=confidence, evidence=ev.context, features=ev.features,
-                      backends=self.backends())
+                      backends=self.backends(), ranked=ev.results)
         if not ev.results or not gate_open:
             latency["generate"] = 0.0
             latency["total"] = (time.perf_counter() - t0) * 1e3

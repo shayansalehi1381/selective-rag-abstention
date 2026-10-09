@@ -34,7 +34,7 @@ from pydantic import BaseModel, Field, ValidationError
 from src.constants import ABSTENTION_ANSWER
 from src.data_loader import Chunk
 from src.llm import AnthropicClient, LLMClient, LLMRefusalError, OpenAICompatibleClient, extract_json
-from src.reranker import MockCrossEncoder, _trigrams
+from src.reranker import MockCrossEncoder, trigrams
 from src.retriever import tokenize
 
 logger = logging.getLogger(__name__)
@@ -198,13 +198,13 @@ class MockGenerator:
         total = sum(idf.get(t, 0.0) for t in q_terms)
         if total <= 0 or not d_terms:
             return 0.0
-        d_grams = [_trigrams(t) for t in d_terms]
+        d_grams = [trigrams(t) for t in d_terms]
         matched = 0.0
         for t in q_terms:
             if t in d_terms:
                 w = 1.0
             else:
-                tg = _trigrams(t)
+                tg = trigrams(t)
                 w = max(len(tg & g) / len(tg | g) for g in d_grams)
                 w = w if w >= 0.5 else 0.0
             matched += idf.get(t, 0.0) * w

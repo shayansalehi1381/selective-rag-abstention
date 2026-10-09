@@ -1,7 +1,8 @@
-"""FastAPI service exposing the selective RAG pipeline. Phase 6, not implemented yet.
+"""FastAPI service exposing the selective RAG pipeline. Phase 7 (future work), not implemented yet.
 
 Planned endpoints: ``POST /query`` (answer or abstention + evidence), ``GET /health``.
-Run with: ``uvicorn src.server:app``.
+Until then, use the CLI (``python -m src.cli ask ...``), which wraps the same
+``SelectiveRAGPipeline``. Planned run command: ``uvicorn src.server:app``.
 """
 
 from __future__ import annotations

@@ -1,8 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "selective-rag-abstention"
-version = "0.1.0"
-description = "Selective RAG with calibrated abstention via conformal prediction."
+version = "0.6.0"
+description = "Selective RAG with calibrated abstention: hybrid retrieval, cross-encoder reranking, Learn-then-Test risk control and a citation-grounded reader."
+readme = "README.md"
+license = { text = "MIT" }
 requires-python = ">=3.10"
+dependencies = ["numpy>=1.26", "pydantic>=2.6", "rank-bm25>=0.2.2", "faiss-cpu>=1.8", "pypdf>=4.0", "arxiv>=2.1", "requests>=2.31"]
+
+[project.optional-dependencies]
+models = ["sentence-transformers>=4.0", "torch>=2.2"]
+llm = ["anthropic>=1.0", "openai>=1.40"]
+plots = ["matplotlib>=3.8"]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+selective-rag = "src.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["src*", "eval*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

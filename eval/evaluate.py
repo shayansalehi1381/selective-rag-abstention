@@ -3,7 +3,7 @@
 Metrics are computed over the **answerable** items (only they have gold chunks), each
 with a seeded percentile-bootstrap 95% CI. An "abstention preview" also asks how well
 each retriever's top-1 score separates answerable from unanswerable questions (AUROC).
-That is the signal Phase 5 will calibrate.
+That is the signal the abstention layer (Phase 4) calibrates.
 
 CLI::
 
