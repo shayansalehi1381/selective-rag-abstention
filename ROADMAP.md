@@ -82,12 +82,25 @@
   `python -m eval.evaluate run --baseline`
 - [ ] Run with real bge-small embeddings and an LLM-generated set over the arXiv corpus
 
-## Phase 3: Reranking
-- [ ] `src/reranker.py`: cross-encoder (`BAAI/bge-reranker-base`, with
-      `cross-encoder/ms-marco-MiniLM-L-6-v2` as the fast baseline)
-- [ ] Rerank the top 50 hybrid candidates down to the top 5. Cache scores for reproducibility.
-- [ ] Ablation: BM25 vs dense vs hybrid vs hybrid+rerank (Recall@{1,5,10}, MRR@10, nDCG@10)
-- **Deliverable:** a retrieval ablation table in `eval/results/retrieval.md`
+## Phase 3: Cross-encoder reranking ✅
+- [x] `src/reranker.py`: `Reranker` over `sentence_transformers.CrossEncoder`
+      (default `cross-encoder/ms-marco-MiniLM-L6-v2`), loaded lazily. It requests raw logits
+      explicitly, and the probability is `sigmoid(logit)`
+- [x] Offline fallback `MockCrossEncoder` (`mock-lexical-v1`): deterministic lexical-interaction
+      scorer (IDF coverage, term proximity, bigrams, character-trigram fuzzy match), with fixed weights
+      that are never fitted on eval data. Fallback is automatic but logged, and recorded in reports;
+      `--strict-reranker` disables it
+- [x] `RerankingRetriever`: hybrid top-50 → cross-encoder → top-k. First-stage ranks and scores are kept;
+      `rerank_score` / `rerank_probability` are exposed for the Phase 5 abstention features
+- [x] Benchmark track `hybrid_reranked` with paired-bootstrap Δ vs hybrid for every metric, top-1
+      AUROC with bootstrap CI and a paired AUROC Δ, and the candidate-recall ceiling
+- **Result (offline sandbox: hashing embedder + mock reranker):** no significant change
+  (Hit@1 Δ = +0.000, Recall@10 Δ = −0.043, AUROC 0.689 vs 0.777, all CIs include 0). The misses are
+  vocabulary mismatch ("backbone … based on" vs "built on top of … encoder"), which a lexical
+  heuristic cannot bridge. This is the case a neural cross-encoder is for.
+- [ ] Run with the real model: `python -m eval.evaluate run --baseline --embedder bge
+      --reranker cross-encoder --strict-reranker`
+- [ ] Compare `BAAI/bge-reranker-base` and sweep `retrieve_k` ∈ {10, 25, 50, 100} (latency vs ceiling)
 
 ## Phase 4: Generation and answer correctness
 - [ ] `src/pipeline.py`: an evidence-grounded generator with chunk citations

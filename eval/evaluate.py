@@ -24,13 +24,16 @@ import numpy as np
 
 from eval.schemas import EvalItem, EvalSet, corpus_fingerprint
 from src.data_loader import load_chunks_jsonl
+from src.reranker import DEFAULT_RERANKER_MODEL, Reranker, RerankingRetriever
 from src.retriever import RETRIEVAL_MODES, HashingEmbedder, HybridRetriever, SentenceTransformerEmbedder
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_KS = (1, 3, 5, 10)
 DEFAULT_REPORT = Path("data/eval/retrieval_benchmark.json")
-RETRIEVER_LABELS = {"dense": "Dense (FAISS)", "sparse": "Sparse (BM25)", "hybrid": "Hybrid (RRF)"}
+RETRIEVER_LABELS = {"dense": "Dense (FAISS)", "sparse": "Sparse (BM25)", "hybrid": "Hybrid (RRF)",
+                    "hybrid_reranked": "Hybrid + Cross-Encoder"}
+RERANKED = "hybrid_reranked"
 
 # A retrieval function returns (chunk_id, score) pairs, best first.
 RetrieveFn = Callable[[str, int], list[tuple[str, float]]]
@@ -82,6 +85,21 @@ def bootstrap_ci(values: Sequence[float], *, n_resamples: int = 1000, alpha: flo
     return (float(lo), float(hi))
 
 
+def paired_bootstrap_delta(a: Sequence[float], b: Sequence[float], *, n_resamples: int = 1000,
+                           alpha: float = 0.05, seed: int = 0) -> dict[str, float | bool | list[float]]:
+    """Mean of ``b - a`` over the same items, with a paired percentile-bootstrap CI.
+
+    Resampling *items* (not tracks) keeps the pairing, so the CI reflects per-question
+    differences rather than the much wider spread of two independent means.
+    """
+    x, y = np.asarray(a, dtype=float), np.asarray(b, dtype=float)
+    if x.shape != y.shape or x.size == 0:
+        raise ValueError("paired samples must be non-empty and of equal length")
+    diff = y - x
+    lo, hi = bootstrap_ci(diff, n_resamples=n_resamples, alpha=alpha, seed=seed)
+    return {"delta": float(diff.mean()), "ci95": [lo, hi], "significant": bool(lo > 0 or hi < 0)}
+
+
 def auroc(positive_scores: Sequence[float], negative_scores: Sequence[float]) -> float:
     """P(score_pos > score_neg) + 0.5·P(tie) (the Mann–Whitney U statistic, normalised)."""
     pos, neg = np.asarray(positive_scores, float), np.asarray(negative_scores, float)
@@ -89,6 +107,36 @@ def auroc(positive_scores: Sequence[float], negative_scores: Sequence[float]) ->
         return float("nan")
     diff = pos[:, None] - neg[None, :]
     return float(((diff > 0).sum() + 0.5 * (diff == 0).sum()) / diff.size)
+
+
+def auroc_ci(positive_scores: Sequence[float], negative_scores: Sequence[float], *,
+             n_resamples: int = 1000, alpha: float = 0.05, seed: int = 0) -> tuple[float, float]:
+    """Stratified bootstrap CI: positives and negatives are resampled separately."""
+    pos, neg = np.asarray(positive_scores, float), np.asarray(negative_scores, float)
+    if pos.size == 0 or neg.size == 0:
+        return (float("nan"), float("nan"))
+    rng = np.random.default_rng(seed)
+    stats = [auroc(pos[rng.integers(0, pos.size, pos.size)], neg[rng.integers(0, neg.size, neg.size)])
+             for _ in range(n_resamples)]
+    lo, hi = np.quantile(stats, [alpha / 2, 1 - alpha / 2])
+    return (float(lo), float(hi))
+
+
+def paired_auroc_delta(pos_a: Sequence[float], neg_a: Sequence[float], pos_b: Sequence[float],
+                       neg_b: Sequence[float], *, n_resamples: int = 1000, alpha: float = 0.05,
+                       seed: int = 0) -> dict[str, float | bool | list[float]]:
+    """AUROC(b) − AUROC(a) on the same questions; each resample uses the same indices for both."""
+    pa, na, pb, nb = (np.asarray(v, float) for v in (pos_a, neg_a, pos_b, neg_b))
+    if pa.shape != pb.shape or na.shape != nb.shape or pa.size == 0 or na.size == 0:
+        raise ValueError("paired AUROC needs matching, non-empty positive and negative samples")
+    rng = np.random.default_rng(seed)
+    deltas = []
+    for _ in range(n_resamples):
+        ip, ineg = rng.integers(0, pa.size, pa.size), rng.integers(0, na.size, na.size)
+        deltas.append(auroc(pb[ip], nb[ineg]) - auroc(pa[ip], na[ineg]))
+    lo, hi = np.quantile(deltas, [alpha / 2, 1 - alpha / 2])
+    return {"delta": auroc(pb, nb) - auroc(pa, na), "ci95": [float(lo), float(hi)],
+            "significant": bool(lo > 0 or hi < 0)}
 
 
 # ---------------------------------------------------------------------------
@@ -172,15 +220,48 @@ def evaluate_retriever(
         "mean_top1_answerable": float(np.mean(finite(top1[True]))) if finite(top1[True]) else float("nan"),
         "mean_top1_unanswerable": float(np.mean(finite(top1[False]))) if finite(top1[False]) else float("nan"),
         "auroc_top1": auroc(top1[True], top1[False]),
+        "auroc_top1_ci95": list(auroc_ci(top1[True], top1[False], n_resamples=n_bootstrap, seed=seed)),
     }
     return RetrieverReport(name, len(answerable), metrics, ci, by_category, preview, rows)
 
 
-def retriever_fn(retriever: HybridRetriever, mode: str) -> RetrieveFn:
+def retriever_fn(retriever: HybridRetriever | RerankingRetriever, mode: str | None = None) -> RetrieveFn:
     def _fn(query: str, k: int) -> list[tuple[str, float]]:
-        return [(r.chunk.chunk_id, r.score) for r in retriever.retrieve(query, top_k=k, mode=mode)]
+        kwargs = {} if mode is None else {"mode": mode}
+        return [(r.chunk.chunk_id, r.score) for r in retriever.retrieve(query, top_k=k, **kwargs)]
 
     return _fn
+
+
+def _top1_by_answerability(report: RetrieverReport) -> tuple[list[float], list[float]]:
+    score = lambda r: r["top1_score"] if r["top1_score"] is not None else float("-inf")  # noqa: E731
+    return ([score(r) for r in report.per_item if r["is_answerable"]],
+            [score(r) for r in report.per_item if not r["is_answerable"]])
+
+
+def compare_tracks(base: RetrieverReport, other: RetrieverReport, ks: Sequence[int], *,
+                   n_bootstrap: int = 1000, seed: int = 0) -> dict:
+    """Paired comparison of ``other`` against ``base`` on identical questions."""
+    base_rows = [r for r in base.per_item if r["is_answerable"]]
+    other_rows = [r for r in other.per_item if r["is_answerable"]]
+    if [r["id"] for r in base_rows] != [r["id"] for r in other_rows]:
+        raise ValueError("tracks were not evaluated on the same items")
+    metrics = {m: paired_bootstrap_delta([r[m] for r in base_rows], [r[m] for r in other_rows],
+                                         n_resamples=n_bootstrap, seed=seed) for m in metric_names(ks)}
+    pa, na = _top1_by_answerability(base)
+    pb, nb = _top1_by_answerability(other)
+    return {"baseline": base.name, "candidate": other.name, "metrics": metrics,
+            "auroc_top1": paired_auroc_delta(pa, na, pb, nb, n_resamples=n_bootstrap, seed=seed)}
+
+
+def candidate_recall(reranking: RerankingRetriever, items: Sequence[EvalItem]) -> float:
+    """Recall of the first-stage candidate pool: the ceiling no reranker can exceed."""
+    vals = []
+    for item in items:
+        if item.is_answerable:
+            pool = {r.chunk.chunk_id for r in reranking.candidates(item.question)}
+            vals.append(recall_at_k(list(pool), item.ground_truth_chunk_ids, max(len(pool), 1)))
+    return float(np.mean(vals)) if vals else float("nan")
 
 
 def run_benchmark(
@@ -188,27 +269,44 @@ def run_benchmark(
     retriever: HybridRetriever,
     *,
     modes: Sequence[str] = RETRIEVAL_MODES,
+    reranker: Reranker | None = None,
+    retrieve_k: int = 50,
+    first_stage_mode: str = "hybrid",
     ks: Sequence[int] = DEFAULT_KS,
     n_bootstrap: int = 1000,
     seed: int = 0,
 ) -> dict:
     eval_set.validate_against_corpus(c.chunk_id for c in retriever.chunks)
+    ks = sorted(set(ks))
     reports = {m: evaluate_retriever(RETRIEVER_LABELS[m], retriever_fn(retriever, m), eval_set.items,
                                      ks=ks, n_bootstrap=n_bootstrap, seed=seed) for m in modes}
-    return {
-        "config": {
-            "embedder": getattr(retriever.embedder, "name", type(retriever.embedder).__name__),
-            "rrf_k": retriever.rrf_k,
-            "candidate_pool": retriever.candidate_pool,
-            "ks": sorted(set(ks)),
-            "bootstrap_resamples": n_bootstrap,
-            "seed": seed,
-            "eval_set_generator": eval_set.generator,
-            "eval_set_counts": eval_set.counts,
-            "corpus": eval_set.corpus.model_dump(),
-        },
-        "retrievers": {m: r.to_dict() for m, r in reports.items()},
+    config = {
+        "embedder": getattr(retriever.embedder, "name", type(retriever.embedder).__name__),
+        "rrf_k": retriever.rrf_k,
+        "candidate_pool": retriever.candidate_pool,
+        "ks": ks,
+        "bootstrap_resamples": n_bootstrap,
+        "seed": seed,
+        "eval_set_generator": eval_set.generator,
+        "eval_set_counts": eval_set.counts,
+        "corpus": eval_set.corpus.model_dump(),
     }
+    comparisons = {}
+    extras: dict[str, dict] = {}
+    if reranker is not None:
+        if retrieve_k < max(ks):
+            raise ValueError("retrieve_k must be at least max(ks)")
+        two_stage = RerankingRetriever(retriever, reranker, retrieve_k=retrieve_k, first_stage_mode=first_stage_mode)
+        reports[RERANKED] = evaluate_retriever(RETRIEVER_LABELS[RERANKED], retriever_fn(two_stage), eval_set.items,
+                                               ks=ks, n_bootstrap=n_bootstrap, seed=seed)
+        config.update({"reranker_backend": reranker.backend, "reranker_fallback_reason": reranker.fallback_reason,
+                       "retrieve_k": retrieve_k, "first_stage_mode": first_stage_mode})
+        extras[RERANKED] = {f"candidate_recall@{retrieve_k}": candidate_recall(two_stage, eval_set.items)}
+        if first_stage_mode in reports:
+            comparisons[f"{RERANKED}_vs_{first_stage_mode}"] = compare_tracks(
+                reports[first_stage_mode], reports[RERANKED], ks, n_bootstrap=n_bootstrap, seed=seed)
+    retrievers = {m: {**r.to_dict(), **extras.get(m, {})} for m, r in reports.items()}
+    return {"config": config, "retrievers": retrievers, "comparisons": comparisons}
 
 
 # ---------------------------------------------------------------------------
@@ -242,6 +340,15 @@ def render_markdown(report: dict) -> str:
     if cfg["embedder"].startswith("hashing"):
         lines.append("- ⚠️ The dense retriever uses the offline **hashing** embedder (lexical, not semantic). "
                      "Re-run with `--embedder bge` for real dense-retrieval numbers.")
+    if "reranker_backend" in cfg:
+        ceiling = retrievers[RERANKED].get(f"candidate_recall@{cfg['retrieve_k']}")
+        lines.append(f"- Reranker: `{cfg['reranker_backend']}` over the {cfg['first_stage_mode']} top-"
+                     f"{cfg['retrieve_k']} (candidate recall ceiling = {ceiling:.3f})")
+        if cfg["reranker_backend"].startswith("mock"):
+            lines.append("- ⚠️ The reranker is the deterministic **mock** (lexical interaction heuristic), not a "
+                         "neural cross-encoder" + (f" — fallback reason: `{cfg['reranker_fallback_reason']}`"
+                                                   if cfg.get("reranker_fallback_reason") else "")
+                         + ". Re-run with `--reranker cross-encoder --strict-reranker` for real numbers.")
     lines += ["", "## Overall", "", "| Retriever | " + " | ".join(names) + " |",
               "|---" * (len(names) + 1) + "|"]
     for r in retrievers.values():
@@ -258,14 +365,23 @@ def render_markdown(report: dict) -> str:
                 lines.append(f"| {r['name']} | {c} | {row['n']} | "
                              + " | ".join(f"{row[m]:.3f}" for m in focus) + " |")
 
-    lines += ["", "## Abstention preview (top-1 retrieval score)", "",
+    for comp in report.get("comparisons", {}).values():
+        lines += ["", f"## Δ {comp['candidate']} vs {comp['baseline']} (paired bootstrap, same questions)", "",
+                  "| Metric | Δ | 95% CI | Significant |", "|---|---|---|---|"]
+        for m, d in list(comp["metrics"].items()) + [("AUROC (top-1)", comp["auroc_top1"])]:
+            lo, hi = d["ci95"]
+            lines.append(f"| {m} | {d['delta']:+.3f} | [{lo:+.3f}, {hi:+.3f}] | {'yes' if d['significant'] else 'no'} |")
+
+    lines += ["", "## Abstention preview (top-1 score)", "",
               "AUROC = how well the top-1 score alone separates answerable from unanswerable questions "
-              "(0.5 = chance).", "",
-              "| Retriever | mean top-1 (answerable) | mean top-1 (unanswerable) | AUROC |", "|---|---|---|---|"]
+              "(0.5 = chance). For the reranked track the score is the cross-encoder logit.", "",
+              "| Retriever | mean top-1 (answerable) | mean top-1 (unanswerable) | AUROC | 95% CI |",
+              "|---|---|---|---|---|"]
     for r in retrievers.values():
         p = r["abstention_preview"]
+        lo, hi = p.get("auroc_top1_ci95", [float("nan")] * 2)
         lines.append(f"| {r['name']} | {p['mean_top1_answerable']:.4f} | "
-                     f"{p['mean_top1_unanswerable']:.4f} | {p['auroc_top1']:.3f} |")
+                     f"{p['mean_top1_unanswerable']:.4f} | {p['auroc_top1']:.3f} | [{lo:.3f}, {hi:.3f}] |")
     return "\n".join(lines) + "\n"
 
 
@@ -290,7 +406,8 @@ def _build_parser() -> argparse.ArgumentParser:
     run = sub.add_parser("run", help="benchmark retrievers against an eval set")
     run.add_argument("--eval-set", type=Path, default=Path("data/eval/eval_set.json"))
     run.add_argument("--corpus", type=Path, default=None, help="default: the corpus path recorded in the eval set")
-    run.add_argument("--baseline", action="store_true", help="compare dense, sparse and hybrid (default: hybrid)")
+    run.add_argument("--baseline", action="store_true",
+                     help="also run the dense and sparse baselines (default: hybrid [+ reranked])")
     run.add_argument("--embedder", choices=("bge", "hashing"), default="bge")
     run.add_argument("--model", default="BAAI/bge-small-en-v1.5")
     run.add_argument("--ks", type=int, nargs="+", default=list(DEFAULT_KS))
@@ -298,6 +415,13 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--bootstrap", type=int, default=1000)
     run.add_argument("--seed", type=int, default=0)
     run.add_argument("--output", type=Path, default=DEFAULT_REPORT)
+    run.add_argument("--reranker", choices=("cross-encoder", "mock", "none"), default="cross-encoder",
+                     help="second stage over the hybrid candidates; 'cross-encoder' falls back to the mock "
+                          "(with a warning) if the model cannot be loaded, unless --strict-reranker")
+    run.add_argument("--reranker-model", default=DEFAULT_RERANKER_MODEL)
+    run.add_argument("--strict-reranker", action="store_true", help="fail instead of falling back to the mock")
+    run.add_argument("--retrieve-k", type=int, default=50, help="first-stage candidates passed to the reranker")
+    run.add_argument("--device", default=None)
     return parser
 
 
@@ -319,8 +443,18 @@ def main(argv: Sequence[str] | None = None) -> int:
                          "Install sentence-transformers / check network, or pass --embedder hashing.") from exc
 
     modes = RETRIEVAL_MODES if args.baseline else ("hybrid",)
-    report = run_benchmark(eval_set, retriever, modes=modes, ks=args.ks,
-                           n_bootstrap=args.bootstrap, seed=args.seed)
+    reranker = None
+    if args.reranker != "none":
+        reranker = Reranker(args.reranker_model, device=args.device, mock=args.reranker == "mock",
+                            allow_fallback=not args.strict_reranker)
+        try:
+            backend = reranker.backend  # triggers the (lazy) model load
+        except RuntimeError as exc:
+            raise SystemExit(f"{exc}\nInstall sentence-transformers + torch and check network access, "
+                             "or drop --strict-reranker to use the offline mock.") from exc
+        logger.info("reranker backend: %s", backend)
+    report = run_benchmark(eval_set, retriever, modes=modes, reranker=reranker, retrieve_k=args.retrieve_k,
+                           ks=args.ks, n_bootstrap=args.bootstrap, seed=args.seed)
     json_path, md_path = write_reports(report, args.output)
     print(render_markdown(report))
     print(f"wrote {json_path} and {md_path}")

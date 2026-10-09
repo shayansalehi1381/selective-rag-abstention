@@ -11,10 +11,13 @@ from pydantic import ValidationError
 
 from eval.evaluate import (
     auroc,
+    auroc_ci,
     bootstrap_ci,
     evaluate_retriever,
     hit_at_k,
     main as evaluate_main,
+    paired_auroc_delta,
+    paired_bootstrap_delta,
     reciprocal_rank,
     recall_at_k,
     render_markdown,
@@ -457,9 +460,12 @@ class TestHarness:
         set_path = eval_set.save(tmp_path / "eval_set.json")
         out = tmp_path / "bench.json"
         assert evaluate_main(["run", "--eval-set", str(set_path), "--corpus", str(corpus_path), "--baseline",
-                              "--embedder", "hashing", "--bootstrap", "50", "--output", str(out)]) == 0
+                              "--embedder", "hashing", "--reranker", "mock", "--bootstrap", "50",
+                              "--output", str(out)]) == 0
         report = json.loads(out.read_text())
-        assert set(report["retrievers"]) == {"dense", "sparse", "hybrid"}
+        assert set(report["retrievers"]) == {"dense", "sparse", "hybrid", "hybrid_reranked"}
+        assert report["config"]["reranker_backend"] == "mock-lexical-v1"
+        assert "hybrid_reranked_vs_hybrid" in report["comparisons"]
         assert out.with_suffix(".md").read_text().startswith("# Retrieval Benchmark")
         assert "wrote" in capsys.readouterr().out
 
@@ -467,6 +473,75 @@ class TestHarness:
         eval_set, _, corpus_path = offline
         set_path = eval_set.save(tmp_path / "eval_set.json")
         out = tmp_path / "bench.json"
-        evaluate_main(["run", "--eval-set", str(set_path), "--corpus", str(corpus_path),
+        evaluate_main(["run", "--eval-set", str(set_path), "--corpus", str(corpus_path), "--reranker", "none",
                        "--embedder", "hashing", "--bootstrap", "20", "--output", str(out)])
-        assert list(json.loads(out.read_text())["retrievers"]) == ["hybrid"]
+        report = json.loads(out.read_text())
+        assert list(report["retrievers"]) == ["hybrid"]
+        assert report["comparisons"] == {} and "reranker_backend" not in report["config"]
+
+    def test_cli_default_reranker_falls_back_with_warning(self, tmp_path, offline, no_model_packages, caplog):
+        eval_set, _, corpus_path = offline
+        set_path = eval_set.save(tmp_path / "eval_set.json")
+        out = tmp_path / "bench.json"
+        with caplog.at_level("WARNING"):
+            evaluate_main(["run", "--eval-set", str(set_path), "--corpus", str(corpus_path),
+                           "--embedder", "hashing", "--bootstrap", "20", "--output", str(out)])
+        report = json.loads(out.read_text())
+        assert list(report["retrievers"]) == ["hybrid", "hybrid_reranked"]
+        assert report["config"]["reranker_backend"] == "mock-lexical-v1"
+        assert "ImportError" in report["config"]["reranker_fallback_reason"]
+        assert any("falling back" in rec.message for rec in caplog.records)
+        assert "**mock**" in out.with_suffix(".md").read_text()
+
+    def test_cli_strict_reranker_fails_loudly(self, tmp_path, offline, no_model_packages):
+        eval_set, _, corpus_path = offline
+        set_path = eval_set.save(tmp_path / "eval_set.json")
+        with pytest.raises(SystemExit, match="strict-reranker"):
+            evaluate_main(["run", "--eval-set", str(set_path), "--corpus", str(corpus_path), "--embedder", "hashing",
+                           "--strict-reranker", "--output", str(tmp_path / "b.json")])
+
+
+class TestRerankerComparison:
+    def test_benchmark_with_reranker(self, offline):
+        from src.reranker import Reranker
+
+        eval_set, chunks, _ = offline
+        retriever = HybridRetriever(HashingEmbedder()).index(chunks)
+        report = run_benchmark(eval_set, retriever, modes=("hybrid",), reranker=Reranker(mock=True),
+                               retrieve_k=20, n_bootstrap=50)
+        assert list(report["retrievers"]) == ["hybrid", "hybrid_reranked"]
+        reranked = report["retrievers"]["hybrid_reranked"]
+        assert 0.0 <= reranked["metrics"]["recall@10"] <= reranked["candidate_recall@20"] <= 1.0
+        comp = report["comparisons"]["hybrid_reranked_vs_hybrid"]
+        assert set(comp["metrics"]) == set(reranked["metrics"])
+        assert comp["metrics"]["hit@1"]["delta"] == pytest.approx(
+            reranked["metrics"]["hit@1"] - report["retrievers"]["hybrid"]["metrics"]["hit@1"])
+        md = render_markdown(report)
+        assert "## Δ Hybrid + Cross-Encoder vs Hybrid (RRF)" in md and "**mock**" in md
+        # reranked results carry the cross-encoder logit as their score
+        assert all(r["top1_score"] is None or r["top1_score"] < 10 for r in reranked["per_item"])
+
+    def test_retrieve_k_must_cover_ks(self, offline):
+        from src.reranker import Reranker
+
+        eval_set, chunks, _ = offline
+        retriever = HybridRetriever(HashingEmbedder()).index(chunks)
+        with pytest.raises(ValueError, match="retrieve_k"):
+            run_benchmark(eval_set, retriever, modes=("hybrid",), reranker=Reranker(mock=True), retrieve_k=5)
+
+    def test_paired_delta(self):
+        same = paired_bootstrap_delta([1, 0, 1, 1], [1, 0, 1, 1], n_resamples=100)
+        assert same == {"delta": 0.0, "ci95": [0.0, 0.0], "significant": False}
+        better = paired_bootstrap_delta([0] * 30, [1] * 30, n_resamples=100)
+        assert better["delta"] == 1.0 and better["significant"]
+        with pytest.raises(ValueError):
+            paired_bootstrap_delta([1, 0], [1])
+
+    def test_auroc_cis(self):
+        pos, neg = [0.9, 0.8, 0.7, 0.4], [0.5, 0.3, 0.2]
+        lo, hi = auroc_ci(pos, neg, n_resamples=200)
+        assert lo <= auroc(pos, neg) <= hi
+        d = paired_auroc_delta(pos, neg, pos, neg, n_resamples=100)
+        assert d["delta"] == 0.0 and d["ci95"] == [0.0, 0.0]
+        flipped = paired_auroc_delta(neg[:3] + [0.0], pos[:3], pos, neg, n_resamples=100)
+        assert flipped["delta"] > 0

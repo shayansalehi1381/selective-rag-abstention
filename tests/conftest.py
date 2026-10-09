@@ -70,6 +70,21 @@ def make_chunks(texts: Sequence[str], arxiv_id: str = "0000.00000v1", title: str
 
 
 @pytest.fixture
+def no_model_packages(monkeypatch):
+    """Simulate an environment without sentence-transformers / torch (imports raise ImportError)."""
+    import builtins
+
+    real_import = builtins.__import__
+
+    def guarded(name, *args, **kwargs):
+        if name.split(".")[0] in {"sentence_transformers", "torch"}:
+            raise ImportError(f"No module named {name!r}")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", guarded)
+
+
+@pytest.fixture
 def corpus_chunks() -> list[Chunk]:
     return make_chunks(CORPUS_TEXTS)
 

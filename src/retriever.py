@@ -312,12 +312,18 @@ RETRIEVAL_MODES = ("hybrid", "sparse", "dense")
 @dataclass(frozen=True)
 class RetrievalResult:
     chunk: Chunk
-    score: float  # fused RRF score
-    rank: int  # 1-based position in the fused ranking
+    score: float  # fused RRF score (or the retriever's / reranker's own score)
+    rank: int  # 1-based position in the returned ranking
     bm25_rank: int | None = None
     bm25_score: float | None = None
     dense_rank: int | None = None
     dense_score: float | None = None
+    # Filled by a second-stage reranker (src/reranker.py); ``score``/``rank`` then refer
+    # to the reranked order and the first-stage values are kept here.
+    first_stage_rank: int | None = None
+    first_stage_score: float | None = None
+    rerank_score: float | None = None  # raw cross-encoder logit
+    rerank_probability: float | None = None  # sigmoid(logit)
 
 
 class HybridRetriever:

@@ -6,7 +6,10 @@ pydantic>=2.6
 # --- Retrieval -------------------------------------------------------------
 faiss-cpu>=1.8
 rank-bm25>=0.2.2
-sentence-transformers>=3.0
+# >=4.0: CrossEncoder.predict(activation_fn=...) is used to obtain raw reranker logits
+sentence-transformers>=4.0
+# CPU-only machines can avoid the large CUDA wheels with:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
 torch>=2.2
 
 # --- Corpus ingestion ------------------------------------------------------
