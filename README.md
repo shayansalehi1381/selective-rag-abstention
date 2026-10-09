@@ -11,16 +11,19 @@ confidence score. The threshold can be chosen with **Learn-then-Test (LTT)**, wh
 finite-sample, distribution-free guarantee on the error rate among answered questions:
 `P(selective risk ≤ α) ≥ 1 − δ`.
 
-> **TL;DR (offline benchmark, α = 0.2).** Standard RAG answers every unanswerable question:
-> hallucination rate **1.00**, selective risk 0.71. Putting a calibrated gate in front of the
-> reader cuts hallucination to **0.05** and selective risk to **0.17**, with lower hallucination
+> **TL;DR (α = 0.2).** Standard RAG answers every unanswerable question: hallucination rate
+> **1.00**, selective risk 0.71. Putting a calibrated gate in front of the reader cuts
+> hallucination to **0.04–0.05** and selective risk to **0.17–0.18**, with lower hallucination
 > in 100% of the 200 evaluation splits. The empirical (ERM) threshold breaks its α target in
-> 34–54% of splits. LTT holds its guarantee (violation rate **≤ 2%**, well under δ = 10%), but
-> with 100 items it can rarely certify a useful threshold, and it says so.
+> 34–54% of splits. LTT holds its guarantee (violation rate **≤ 2%**, well under δ = 10%); with
+> real retrieval models it answers 33% of questions at 0.09 test risk, but with 30 calibration
+> items it cannot certify α ≤ 0.1, and it says so.
 >
-> These numbers come from **offline stand-ins**: a hashing embedder, a lexical mock reranker and
-> a mock extractive reader. Every component has a real backend (bge-small, an MS MARCO
-> cross-encoder, Claude or an OpenAI-compatible LLM) that you can switch on with one flag; see
+> **What was run with which models.** Retrieval and abstention were benchmarked both offline
+> (hashing embedder, mock reranker) and with real models (bge-small-en-v1.5 and an MS MARCO
+> cross-encoder). The end-to-end benchmark used the real retriever and reranker but the **mock
+> extractive reader**; a run with an LLM reader (Claude or any OpenAI-compatible model) is
+> implemented but **not yet done**, so absolute end-to-end accuracy is a floor. See
 > [Reproducibility](#reproducibility).
 
 ---
@@ -299,10 +302,18 @@ is the missing piece for a fair LTT result.
   items. With 30 calibration items and a mock reader that is right on about 30% of questions,
   that is rarely possible, so LTT abstains and says why. **More calibration data, not a
   different method, is the fix.**
-- **Offline stand-ins.** The mock reader can't do arithmetic: it gets 0/20 reasoning items right
-  and 30/50 factoid items. The mock reranker can't bridge paraphrases. The absolute numbers
-  are therefore a floor. The *relative* conclusions about ERM vs LTT and gating vs
-  self-abstention are what the offline benchmark supports.
+- **The best abstention signal is a simple one.** With real models, the dense top-1 score alone
+  (AUROC 0.933) matches the 9-feature model (0.911) within noise, and is better calibrated. A
+  learned combination fitted on 40 items overfits.
+- **A stronger reranker did not help retrieval.** The off-the-shelf MS MARCO cross-encoder is
+  slightly *worse* than hybrid retrieval on this numeric, entity-heavy corpus (MRR −0.038). Its
+  logit is still a useful abstention signal.
+- **Reader is still a mock in the end-to-end runs.** It can't do arithmetic (0/20 reasoning
+  items right, 30/50 factoid items), so end-to-end accuracy is a floor and LTT's low coverage
+  there mostly reflects the reader. The relative conclusions about ERM vs LTT and gating vs
+  self-abstention are what that benchmark supports.
+- **Small samples.** 100 items and calibration folds of about 30 make intervals wide; treat
+  differences smaller than the intervals as unresolved.
 - **Synthetic data.** The ground truth comes from a fact table, which makes it exact, but
   real papers are messier. The arXiv ingestion pipeline and the LLM benchmark generator are
   implemented for that next step.
@@ -485,7 +496,7 @@ Dockerfile      CPU image (offline backends by default; --build-arg WITH_MODELS=
 
 ## Roadmap
 Phases 0–7 are complete; see [ROADMAP.md](ROADMAP.md). Next steps:
-- A run with real models (bge-small, the MS MARCO cross-encoder, Claude) to replace the offline numbers.
+- Done: retrieval and abstention with real models (bge-small, MS MARCO cross-encoder). Remaining: the end-to-end run with an LLM reader (Claude or an OpenAI-compatible model).
 - A larger LLM-generated eval set over the arXiv corpus, with paper-disjoint splits, so LTT can
   certify α ≤ 0.1.
 - Conformal risk control (E[risk] ≤ α) as a less conservative alternative.
