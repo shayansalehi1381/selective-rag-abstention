@@ -64,7 +64,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build
-        run: docker build -t selective-rag:ci .
+        # Docker Hub intermittently answers 429/504 to anonymous pulls from shared runners; retry before failing.
+        run: |
+          for attempt in 1 2 3 4; do
+            docker build -t selective-rag:ci . && exit 0
+            echo "docker build failed (attempt $attempt); retrying in $((attempt * 20))s"
+            sleep $((attempt * 20))
+          done
+          exit 1
       - name: Smoke test
         run: |
           docker run -d --name srag -p 8000:8000 -e SRAG_ADMIN_TOKEN=ci-token selective-rag:ci
