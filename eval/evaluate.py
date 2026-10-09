@@ -399,6 +399,41 @@ def write_reports(report: dict, json_path: Path | str) -> tuple[Path, Path]:
 # ---------------------------------------------------------------------------
 
 
+def add_pipeline_args(parser: argparse.ArgumentParser) -> None:
+    """CLI flags shared by every command that builds the retrieval pipeline."""
+    parser.add_argument("--embedder", choices=("bge", "hashing"), default="bge")
+    parser.add_argument("--model", default="BAAI/bge-small-en-v1.5")
+    parser.add_argument("--rrf-k", type=float, default=60)
+    parser.add_argument("--reranker", choices=("cross-encoder", "mock", "none"), default="cross-encoder",
+                        help="second stage over the hybrid candidates; 'cross-encoder' falls back to the mock "
+                             "(with a warning) if the model cannot be loaded, unless --strict-reranker")
+    parser.add_argument("--reranker-model", default=DEFAULT_RERANKER_MODEL)
+    parser.add_argument("--strict-reranker", action="store_true", help="fail instead of falling back to the mock")
+    parser.add_argument("--retrieve-k", type=int, default=50, help="first-stage candidates passed to the reranker")
+    parser.add_argument("--device", default=None)
+
+
+def build_pipeline(chunks, args: argparse.Namespace) -> tuple[HybridRetriever, Reranker | None]:
+    """Index ``chunks`` and construct the (optional) reranker, failing with actionable messages."""
+    embedder = HashingEmbedder() if args.embedder == "hashing" else SentenceTransformerEmbedder(args.model)
+    try:
+        retriever = HybridRetriever(embedder, rrf_k=args.rrf_k).index(chunks)
+    except (ImportError, OSError) as exc:  # missing package, or model weights not downloadable
+        raise SystemExit(f"could not load embedder {args.model!r} ({exc}). "
+                         "Install sentence-transformers / check network, or pass --embedder hashing.") from exc
+    reranker = None
+    if args.reranker != "none":
+        reranker = Reranker(args.reranker_model, device=args.device, mock=args.reranker == "mock",
+                            allow_fallback=not args.strict_reranker)
+        try:
+            backend = reranker.backend  # triggers the (lazy) model load
+        except RuntimeError as exc:
+            raise SystemExit(f"{exc}\nInstall sentence-transformers + torch and check network access, "
+                             "or drop --strict-reranker to use the offline mock.") from exc
+        logger.info("reranker backend: %s", backend)
+    return retriever, reranker
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m eval.evaluate", description=__doc__.split("\n")[0])
     parser.add_argument("-v", "--verbose", action="store_true")
@@ -408,20 +443,11 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--corpus", type=Path, default=None, help="default: the corpus path recorded in the eval set")
     run.add_argument("--baseline", action="store_true",
                      help="also run the dense and sparse baselines (default: hybrid [+ reranked])")
-    run.add_argument("--embedder", choices=("bge", "hashing"), default="bge")
-    run.add_argument("--model", default="BAAI/bge-small-en-v1.5")
     run.add_argument("--ks", type=int, nargs="+", default=list(DEFAULT_KS))
-    run.add_argument("--rrf-k", type=float, default=60)
     run.add_argument("--bootstrap", type=int, default=1000)
     run.add_argument("--seed", type=int, default=0)
     run.add_argument("--output", type=Path, default=DEFAULT_REPORT)
-    run.add_argument("--reranker", choices=("cross-encoder", "mock", "none"), default="cross-encoder",
-                     help="second stage over the hybrid candidates; 'cross-encoder' falls back to the mock "
-                          "(with a warning) if the model cannot be loaded, unless --strict-reranker")
-    run.add_argument("--reranker-model", default=DEFAULT_RERANKER_MODEL)
-    run.add_argument("--strict-reranker", action="store_true", help="fail instead of falling back to the mock")
-    run.add_argument("--retrieve-k", type=int, default=50, help="first-stage candidates passed to the reranker")
-    run.add_argument("--device", default=None)
+    add_pipeline_args(run)
     return parser
 
 
@@ -435,24 +461,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     if corpus_fingerprint(chunks) != eval_set.corpus.sha256:
         logger.warning("corpus %s differs from the one the eval set was built on", corpus_path)
 
-    embedder = HashingEmbedder() if args.embedder == "hashing" else SentenceTransformerEmbedder(args.model)
-    try:
-        retriever = HybridRetriever(embedder, rrf_k=args.rrf_k).index(chunks)
-    except (ImportError, OSError) as exc:  # missing package, or model weights not downloadable
-        raise SystemExit(f"could not load embedder {args.model!r} ({exc}). "
-                         "Install sentence-transformers / check network, or pass --embedder hashing.") from exc
-
+    retriever, reranker = build_pipeline(chunks, args)
     modes = RETRIEVAL_MODES if args.baseline else ("hybrid",)
-    reranker = None
-    if args.reranker != "none":
-        reranker = Reranker(args.reranker_model, device=args.device, mock=args.reranker == "mock",
-                            allow_fallback=not args.strict_reranker)
-        try:
-            backend = reranker.backend  # triggers the (lazy) model load
-        except RuntimeError as exc:
-            raise SystemExit(f"{exc}\nInstall sentence-transformers + torch and check network access, "
-                             "or drop --strict-reranker to use the offline mock.") from exc
-        logger.info("reranker backend: %s", backend)
     report = run_benchmark(eval_set, retriever, modes=modes, reranker=reranker, retrieve_k=args.retrieve_k,
                            ks=args.ks, n_bootstrap=args.bootstrap, seed=args.seed)
     json_path, md_path = write_reports(report, args.output)

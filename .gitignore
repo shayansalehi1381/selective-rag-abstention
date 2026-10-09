@@ -238,6 +238,9 @@ indices/
 
 # Benchmark reports depend on the embedder used; regenerate with `python -m eval.evaluate run`
 data/eval/retrieval_benchmark.*
+data/eval/abstention_benchmark.*
+data/eval/figures/
+data/eval/policy*.json
 
 # Model / tool caches
 .cache/

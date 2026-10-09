@@ -18,10 +18,10 @@ from typing import Iterable, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from src.constants import ABSTENTION_ANSWER  # noqa: F401  (re-exported)
 from src.data_loader import Chunk
 
 SCHEMA_VERSION = "1.0"
-ABSTENTION_ANSWER = "I do not have sufficient information in the context to answer this question."
 
 
 class Category(str, Enum):

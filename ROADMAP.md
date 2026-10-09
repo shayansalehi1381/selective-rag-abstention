@@ -22,11 +22,9 @@
                               Phase 3: cross-encoder reranker     ◄── Phase 2: benchmark (ground truth,
                                                                         Hit@K / MRR / Recall@K) scores each stage
                                                    ▼
-                              Phase 4: generator (LLM, evidence-grounded prompt)
+             Phase 4: abstention features ─► confidence g(x) ─► LTT threshold τ̂_α
                                                    ▼
-             Phase 5: abstention features ─► nonconformity score s(x) ─► conformal threshold τ̂_α
-                                                   ▼
-                                  s(x) ≤ τ̂_α ?  ── yes ─► ANSWER + cited chunks
+                                  g(x) ≥ τ̂_α ?  ── yes ─► Phase 5: generator (LLM) ─► ANSWER + cited chunks
                                                  └─ no ──► ABSTAIN ("insufficient evidence")
                                                    ▼
              Phase 6: risk–coverage, AURC, calibration │ Phase 7: FastAPI service, Docker, CI
@@ -58,7 +56,7 @@
 - [x] Recursive character chunking (512 chars, 64 overlap) with exact character offsets,
       page numbers, `arxiv_id`, title and chunk index
 - [x] `src/retriever.py`: BM25 (Okapi) + FAISS `IndexFlatIP` (cosine) + weighted RRF (k=60)
-- [x] Per-retriever ranks and scores kept on each result, to feed the Phase 5 abstention features
+- [x] Per-retriever ranks and scores kept on each result, to feed the Phase 4 abstention features
 - [x] Offline unit tests with a deterministic hashing embedder; opt-in integration tests
 - **Deliverable:** `python -m src.data_loader download && python -m src.data_loader ingest`
   produces `data/processed/chunks.jsonl`, and `HybridRetriever` indexes and retrieves it.
@@ -91,7 +89,7 @@
       that are never fitted on eval data. Fallback is automatic but logged, and recorded in reports;
       `--strict-reranker` disables it
 - [x] `RerankingRetriever`: hybrid top-50 → cross-encoder → top-k. First-stage ranks and scores are kept;
-      `rerank_score` / `rerank_probability` are exposed for the Phase 5 abstention features
+      `rerank_score` / `rerank_probability` are exposed for the Phase 4 abstention features
 - [x] Benchmark track `hybrid_reranked` with paired-bootstrap Δ vs hybrid for every metric, top-1
       AUROC with bootstrap CI and a paired AUROC Δ, and the candidate-recall ceiling
 - **Result (offline sandbox: hashing embedder + mock reranker):** no significant change
@@ -102,26 +100,38 @@
       --reranker cross-encoder --strict-reranker`
 - [ ] Compare `BAAI/bge-reranker-base` and sweep `retrieve_k` ∈ {10, 25, 50, 100} (latency vs ceiling)
 
-## Phase 4: Generation and answer correctness
+## Phase 4: Calibrated abstention (selective RAG) ✅
+- [x] Label (until generation exists): **safe to answer** = answerable and a gold chunk in the top-3
+      reranked context (`k_ctx` is configurable)
+- [x] `src/abstention.py`: 9 features from one pipeline call. Reranker: top-1 logit, top-1 minus top-2
+      margin, softmax entropy. Retrieval: RRF top-1 and margin, BM25 and dense top-1, sparse/dense rank
+      agreement, top-5 overlap
+- [x] Confidence models: L2 logistic regression (numpy IRLS) on all features, plus Platt-scaled single
+      signals. JSON-persisted `AbstentionPolicy` and a runtime `SelectiveRetriever`, which returns
+      evidence or the canonical abstention answer
+- [x] Thresholds: **ERM** (no guarantee) and **Learn-then-Test** (exact binomial p-values,
+      fixed-sequence testing on a coverage grid fixed on the train split; P(risk ≤ α) ≥ 1 − δ)
+- [x] `eval/abstention_eval.py`: 200 stratified 40/30/30 splits, reporting AUROC, AURC/E-AURC,
+      selective accuracy at coverage {0.5, 0.8, 0.9, 1}, Brier, ECE, risk-control outcomes per α,
+      risk-coverage / coverage-accuracy / reliability figures
+- **Result (offline: hashing embedder + mock reranker, 66/100 safe):**
+  - The combined model reaches AUROC **0.854** [0.75, 0.95], against 0.777 for the best Phase 2/3
+    single signal. Pooled ECE is 0.046.
+  - **ERM breaks its target:** at α = 0.1 test risk is ≤ α in only 45% of splits, and 66% at α = 0.2.
+  - **LTT at α = 0.2 is valid in 90% of splits (the 1 − δ target)**, but it certifies only 21% of
+    them. At α ≤ 0.1 it cannot certify anything with ~30 calibration items (it needs ≥ 22 / ≥ 45
+    answered items). A guarantee needs more calibration data, and LTT reports exactly that.
+- [ ] Scale calibration data (LLM-generated set, Phase 5) so that LTT can certify α = 0.1
+- [ ] Conformal risk control (E[risk] ≤ α) as a less conservative alternative; NLI / self-consistency
+      features once a generator exists
+
+## Phase 5: Generation and answer correctness
 - [ ] `src/pipeline.py`: an evidence-grounded generator with chunk citations
 - [ ] Scale the Phase 2 set (LLM engine) and split it into train (feature fitting) / **calibration** / test,
       with no paper shared across splits
+- [ ] Replace the retrieval-grounded Phase 4 label with answer correctness, and re-calibrate
 - [ ] Answer correctness labels: exact match / token-F1, plus an LLM-judge for semantic equivalence
 - **Deliverable:** `data/eval/qa_{train,cal,test}.jsonl` and a data card describing how they were built
-
-## Phase 5: Abstention and conformal calibration
-- [ ] `src/abstention.py`, the feature extractor:
-  - retrieval: top-1 score, top-1 minus top-2 margin, BM25 vs dense rank agreement, score entropy
-  - reranker: maximum relevance probability
-  - generation: NLI entailment between the answer and the cited evidence, and
-    self-consistency across *n* samples
-- [ ] Confidence model g(x) ∈ [0, 1] (logistic regression or gradient boosting) trained on the train split
-- [ ] **Split conformal risk control**: on the calibration set, pick
-      τ̂ = inf{τ : (n/(n+1))·R̂_n(τ) + 1/(n+1) ≤ α}, where R̂_n is the selective risk.
-      This gives E[risk] ≤ α (Angelopoulos et al., *Conformal Risk Control*). A
-      Learn-then-Test variant gives a high-probability (1 − δ) guarantee.
-- [ ] Baselines: no abstention, a fixed retrieval-score threshold, raw LLM self-reported confidence
-- **Deliverable:** a `ConformalAbstainer` with `fit(cal_scores, cal_errors, alpha)` and `decide(x)`
 
 ## Phase 6: Evaluation
 - [ ] `eval/evaluate.py`:

@@ -298,13 +298,18 @@ class RerankingRetriever:
         return self.first_stage.retrieve(query, top_k=k, mode=self.first_stage_mode)
 
     def retrieve(self, query: str, top_k: int = 10) -> list[RetrievalResult]:
+        return self.retrieve_with_candidates(query, top_k)[1]
+
+    def retrieve_with_candidates(self, query: str, top_k: int = 10) -> tuple[list[RetrievalResult],
+                                                                           list[RetrievalResult]]:
+        """``(first-stage candidates, reranked top_k)`` from a single first-stage call."""
         if top_k <= 0:
             raise ValueError("top_k must be positive")
         candidates = self.candidates(query, top_k)
         if not candidates:
-            return []
+            return [], []
         reranked = self.reranker.rerank(query, [c.chunk for c in candidates], top_n=top_k)
-        return [
+        return candidates, [
             dataclasses.replace(
                 candidates[r.index],
                 score=r.score,
