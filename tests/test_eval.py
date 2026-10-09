@@ -119,7 +119,7 @@ class TestSchemas:
         es = self._set([answerable(), unanswerable()])
         loaded = EvalSet.load(es.save(tmp_path / "set.json"))
         assert loaded == es
-        raw = json.loads((tmp_path / "set.json").read_text())
+        raw = json.loads((tmp_path / "set.json").read_text(encoding="utf-8"))
         assert set(raw) == {"schema_version", "generator", "seed", "corpus", "counts", "items"}
         assert set(raw["items"][0]) == {"id", "question", "is_answerable", "category",
                                         "ground_truth_chunk_ids", "reference_answer", "metadata"}
@@ -462,11 +462,11 @@ class TestHarness:
         assert evaluate_main(["run", "--eval-set", str(set_path), "--corpus", str(corpus_path), "--baseline",
                               "--embedder", "hashing", "--reranker", "mock", "--bootstrap", "50",
                               "--output", str(out)]) == 0
-        report = json.loads(out.read_text())
+        report = json.loads(out.read_text(encoding="utf-8"))
         assert set(report["retrievers"]) == {"dense", "sparse", "hybrid", "hybrid_reranked"}
         assert report["config"]["reranker_backend"] == "mock-lexical-v1"
         assert "hybrid_reranked_vs_hybrid" in report["comparisons"]
-        assert out.with_suffix(".md").read_text().startswith("# Retrieval Benchmark")
+        assert out.with_suffix(".md").read_text(encoding="utf-8").startswith("# Retrieval Benchmark")
         assert "wrote" in capsys.readouterr().out
 
     def test_cli_without_baseline_runs_hybrid_only(self, tmp_path, offline):
@@ -475,7 +475,7 @@ class TestHarness:
         out = tmp_path / "bench.json"
         evaluate_main(["run", "--eval-set", str(set_path), "--corpus", str(corpus_path), "--reranker", "none",
                        "--embedder", "hashing", "--bootstrap", "20", "--output", str(out)])
-        report = json.loads(out.read_text())
+        report = json.loads(out.read_text(encoding="utf-8"))
         assert list(report["retrievers"]) == ["hybrid"]
         assert report["comparisons"] == {} and "reranker_backend" not in report["config"]
 
@@ -486,12 +486,12 @@ class TestHarness:
         with caplog.at_level("WARNING"):
             evaluate_main(["run", "--eval-set", str(set_path), "--corpus", str(corpus_path),
                            "--embedder", "hashing", "--bootstrap", "20", "--output", str(out)])
-        report = json.loads(out.read_text())
+        report = json.loads(out.read_text(encoding="utf-8"))
         assert list(report["retrievers"]) == ["hybrid", "hybrid_reranked"]
         assert report["config"]["reranker_backend"] == "mock-lexical-v1"
         assert "ImportError" in report["config"]["reranker_fallback_reason"]
         assert any("falling back" in rec.message for rec in caplog.records)
-        assert "**mock**" in out.with_suffix(".md").read_text()
+        assert "**mock**" in out.with_suffix(".md").read_text(encoding="utf-8")
 
     def test_cli_strict_reranker_fails_loudly(self, tmp_path, offline, no_model_packages):
         eval_set, _, corpus_path = offline

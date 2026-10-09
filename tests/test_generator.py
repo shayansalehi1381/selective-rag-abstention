@@ -255,7 +255,7 @@ class TestGeneratorFacade:
         g.generate(q, context)
         g.generate(q, context, forced=True)
         g.generate(q, context[:2])
-        assert g.cache_hits == 0 and len((tmp_path / "c.jsonl").read_text().splitlines()) == 3
+        assert g.cache_hits == 0 and len((tmp_path / "c.jsonl").read_text(encoding="utf-8").splitlines()) == 3
         g.generate(q, context)
         assert g.cache_hits == 1
 
@@ -264,7 +264,7 @@ class TestGeneratorFacade:
         Generator("anthropic", client=ScriptedClient([ConnectionError("x")]), cache_path=path).generate("q?", context)
         again = Generator("anthropic", client=ScriptedClient([ConnectionError("x")]), cache_path=path)
         again.generate("q?", context)
-        assert again.cache_hits == 1 and len(path.read_text().splitlines()) == 1
+        assert again.cache_hits == 1 and len(path.read_text(encoding="utf-8").splitlines()) == 1
 
     def test_read_both(self, context):
         pair = read_both(Generator("mock"), "Which grape varieties dominate Rioja wine blends?", context)
@@ -288,5 +288,5 @@ def test_cache_is_thread_safe(tmp_path):
     with ThreadPoolExecutor(max_workers=16) as pool:
         answers = list(pool.map(lambda q: g.generate(q, ctx), qs))
     assert len({a.answer for a in answers}) == 2
-    lines = path.read_text().splitlines()
+    lines = path.read_text(encoding="utf-8").splitlines()
     assert len(lines) == len({json.loads(line)["key"] for line in lines}) == 2  # one line per key, no torn writes

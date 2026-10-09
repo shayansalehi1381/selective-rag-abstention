@@ -200,9 +200,9 @@ class TestCli:
         assert abstention_main(["run", "--embedder", "hashing", "--reranker", "mock", "--n-splits", "4",
                                 "--output", str(out), "--no-figures", "--save-policy", str(policy_path),
                                 "--policy-method", "erm", "--policy-alpha", "0.2"]) == 0
-        report = json.loads(out.read_text())  # strict JSON (no NaN / Infinity literals)
+        report = json.loads(out.read_text(encoding="utf-8"))  # strict JSON (no NaN / Infinity literals)
         assert report["config"]["n_splits"] == 4
-        assert out.with_suffix(".md").read_text().startswith("# Abstention Benchmark")
+        assert out.with_suffix(".md").read_text(encoding="utf-8").startswith("# Abstention Benchmark")
         policy = AbstentionPolicy.load(policy_path)
         assert policy.meta["method"] == "erm" and np.isfinite(policy.tau)
         assert "saved policy" in capsys.readouterr().out
@@ -211,10 +211,10 @@ class TestCli:
         out = tmp_path / "ab.json"
         abstention_main(["run", "--embedder", "hashing", "--reranker", "none", "--n-splits", "2",
                          "--output", str(out), "--no-figures"])
-        assert not set(CE_FEATURES) & set(json.loads(out.read_text())["config"]["features"])
+        assert not set(CE_FEATURES) & set(json.loads(out.read_text(encoding="utf-8"))["config"]["features"])
 
     def test_default_reranker_falls_back(self, tmp_path, no_model_packages):
         out = tmp_path / "ab.json"
         abstention_main(["run", "--embedder", "hashing", "--n-splits", "2", "--output", str(out), "--no-figures"])
-        cfg = json.loads(out.read_text())["config"]
+        cfg = json.loads(out.read_text(encoding="utf-8"))["config"]
         assert cfg["reranker_backend"] == "mock-lexical-v1" and "ImportError" in cfg["reranker_fallback_reason"]

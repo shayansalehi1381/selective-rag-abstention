@@ -124,10 +124,10 @@ class TestCli:
         out = tmp_path / "e2e.json"
         assert e2e_main(["run", "--embedder", "hashing", "--reranker", "mock", "--generator", "mock",
                          "--n-splits", "3", "--no-cache", "--output", str(out)]) == 0
-        report = json.loads(out.read_text())  # strict JSON
+        report = json.loads(out.read_text(encoding="utf-8"))  # strict JSON
         assert report["config"]["generator_backend"] == "mock-extractive-v1"
         assert report["config"]["headline_alpha"] == 0.2 and len(report["items"]) == 100
-        md = out.with_suffix(".md").read_text()
+        md = out.with_suffix(".md").read_text(encoding="utf-8")
         assert md.startswith("# End-to-End Selective RAG Benchmark") and "Headline comparison (α = 0.2" in md
         assert "**mock extractive**" in md
         assert md == render_markdown(report)
@@ -136,7 +136,7 @@ class TestCli:
         out = tmp_path / "e2e.json"
         e2e_main(["run", "--embedder", "hashing", "--reranker", "mock", "--n-splits", "2", "--no-cache",
                   "--output", str(out)])
-        cfg = json.loads(out.read_text())["config"]
+        cfg = json.loads(out.read_text(encoding="utf-8"))["config"]
         assert cfg["generator_backend"] == "mock-extractive-v1" and "ImportError" in cfg["generator_fallback_reason"]
 
     def test_strict_generator_fails_clearly(self, tmp_path, no_llm_sdk):
@@ -148,4 +148,4 @@ class TestCli:
         out = tmp_path / "e2e.json"
         e2e_main(["run", "--embedder", "hashing", "--reranker", "mock", "--generator", "mock", "--n-splits", "2",
                   "--no-cache", "--alphas", "0.1", "--headline-alpha", "0.25", "--output", str(out)])
-        assert json.loads(out.read_text())["config"]["alphas"] == [0.1, 0.25]
+        assert json.loads(out.read_text(encoding="utf-8"))["config"]["alphas"] == [0.1, 0.25]
