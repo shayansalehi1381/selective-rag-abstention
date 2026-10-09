@@ -19,16 +19,17 @@
                          │        └──────── RRF (k=60) ─────┘                             │
                          └─────────────────────────┬──────────────────────────────────────┘
                                                    ▼
-                              Phase 2: cross-encoder reranker
+                              Phase 3: cross-encoder reranker     ◄── Phase 2: benchmark (ground truth,
+                                                                        Hit@K / MRR / Recall@K) scores each stage
                                                    ▼
-                              Phase 3: generator (LLM, evidence-grounded prompt)
+                              Phase 4: generator (LLM, evidence-grounded prompt)
                                                    ▼
-             Phase 4: abstention features ─► nonconformity score s(x) ─► conformal threshold τ̂_α
+             Phase 5: abstention features ─► nonconformity score s(x) ─► conformal threshold τ̂_α
                                                    ▼
                                   s(x) ≤ τ̂_α ?  ── yes ─► ANSWER + cited chunks
                                                  └─ no ──► ABSTAIN ("insufficient evidence")
                                                    ▼
-             Phase 5: risk–coverage, AURC, calibration │ Phase 6: FastAPI service, Docker, CI
+             Phase 6: risk–coverage, AURC, calibration │ Phase 7: FastAPI service, Docker, CI
 ```
 
 ## Research questions
@@ -57,31 +58,45 @@
 - [x] Recursive character chunking (512 chars, 64 overlap) with exact character offsets,
       page numbers, `arxiv_id`, title and chunk index
 - [x] `src/retriever.py`: BM25 (Okapi) + FAISS `IndexFlatIP` (cosine) + weighted RRF (k=60)
-- [x] Per-retriever ranks and scores kept on each result, to feed the Phase 4 features
+- [x] Per-retriever ranks and scores kept on each result, to feed the Phase 5 abstention features
 - [x] Offline unit tests with a deterministic hashing embedder; opt-in integration tests
 - **Deliverable:** `python -m src.data_loader download && python -m src.data_loader ingest`
   produces `data/processed/chunks.jsonl`, and `HybridRetriever` indexes and retrieves it.
 
-## Phase 2: Reranking
+## Phase 2: Evaluation benchmark and ground truth ✅
+- [x] `eval/schemas.py`: strict Pydantic schemas (`EvalItem`, `EvalSet`). Answerable items must cite
+      evidence chunks, unanswerable items must cite none and carry the canonical abstention answer,
+      and every cited id is checked against a sha256-fingerprinted corpus
+- [x] `eval/synthetic_gen.py`: 100 items = 70 answerable (50 factoid + 20 two-fact reasoning) + 30
+      unanswerable (10 out-of-domain, 10 unsupported/hallucinated-entity, 10 false-premise conflicts)
+  - [x] Offline deterministic engine: synthetic papers rendered from a fact table, chunked with
+        the real splitter, with evidence linked to the exact chunk(s). Dev-split and ablation numbers
+        act as in-paper hard negatives. Byte-identical output for a given seed
+  - [x] Extractive offline engine for an existing chunk corpus (`--corpus`, lower fidelity)
+  - [x] LLM engine (Anthropic / OpenAI-compatible): verbatim-evidence filter, plus an adversarial
+        judge over the top-5 retrieved chunks that discards "unanswerable" items that are answerable
+- [x] `eval/evaluate.py`: Hit@{1,3,5,10}, MRR@10 and Recall@K with bootstrap 95% CIs, per-category
+      breakdown, dense vs sparse vs hybrid baselines, and an abstention preview (top-1 score AUROC)
+- [x] Reports: `data/eval/retrieval_benchmark.{json,md}`
+- **Deliverable:** `python -m eval.synthetic_gen generate --offline` →
+  `python -m eval.evaluate run --baseline`
+- [ ] Run with real bge-small embeddings and an LLM-generated set over the arXiv corpus
+
+## Phase 3: Reranking
 - [ ] `src/reranker.py`: cross-encoder (`BAAI/bge-reranker-base`, with
       `cross-encoder/ms-marco-MiniLM-L-6-v2` as the fast baseline)
 - [ ] Rerank the top 50 hybrid candidates down to the top 5. Cache scores for reproducibility.
 - [ ] Ablation: BM25 vs dense vs hybrid vs hybrid+rerank (Recall@{1,5,10}, MRR@10, nDCG@10)
 - **Deliverable:** a retrieval ablation table in `eval/results/retrieval.md`
 
-## Phase 3: Generation and evaluation data
+## Phase 4: Generation and answer correctness
 - [ ] `src/pipeline.py`: an evidence-grounded generator with chunk citations
-- [ ] `eval/synthetic_gen.py`: a synthetic QA set built from the corpus
-  - [ ] **Answerable** questions: an LLM writes Q/A pairs grounded in a sampled chunk
-        (keeping the gold `chunk_id`), then a round-trip filter checks that the answer can be
-        recovered from that chunk
-  - [ ] **Unanswerable** questions: out-of-corpus topics, entity and number perturbations
-        of answerable questions, and questions whose premise is false
-  - [ ] Splits: train (feature fitting) / **calibration** / test, with no paper shared across splits
+- [ ] Scale the Phase 2 set (LLM engine) and split it into train (feature fitting) / **calibration** / test,
+      with no paper shared across splits
 - [ ] Answer correctness labels: exact match / token-F1, plus an LLM-judge for semantic equivalence
 - **Deliverable:** `data/eval/qa_{train,cal,test}.jsonl` and a data card describing how they were built
 
-## Phase 4: Abstention and conformal calibration
+## Phase 5: Abstention and conformal calibration
 - [ ] `src/abstention.py`, the feature extractor:
   - retrieval: top-1 score, top-1 minus top-2 margin, BM25 vs dense rank agreement, score entropy
   - reranker: maximum relevance probability
@@ -95,7 +110,7 @@
 - [ ] Baselines: no abstention, a fixed retrieval-score threshold, raw LLM self-reported confidence
 - **Deliverable:** a `ConformalAbstainer` with `fit(cal_scores, cal_errors, alpha)` and `decide(x)`
 
-## Phase 5: Evaluation
+## Phase 6: Evaluation
 - [ ] `eval/evaluate.py`:
   - risk–coverage curves and **AURC** / E-AURC (Geifman & El-Yaniv)
   - selective accuracy at fixed coverage (50%, 80%, 90%)
@@ -106,7 +121,7 @@
 - [ ] All figures produced by scripts (matplotlib), fixed seeds, results logged to JSON
 - **Deliverable:** `eval/results/` holding figures and tables, and a written results section in the README
 
-## Phase 6: Serving and engineering
+## Phase 7: Serving and engineering
 - [ ] `src/server.py`: FastAPI `POST /query` → `{answer | abstained, confidence, evidence[]}`,
       `GET /health`. Pydantic schemas, with the index loaded once at startup.
 - [ ] Dockerfile (CPU), `make` targets, GitHub Actions CI (lint + offline tests)

@@ -1,0 +1,1960 @@
+{
+  "corpus": {
+    "num_chunks": 144,
+    "path": "data/eval/synthetic_corpus.jsonl",
+    "sha256": "b67385c614afdfc0b3587cda84ae3caf5eb80710041dcc072a862bb82f506727"
+  },
+  "counts": {
+    "in_domain_factoid": 50,
+    "in_domain_reasoning": 20,
+    "out_of_domain": 10,
+    "subtle_conflict": 10,
+    "unsupported_fact": 10
+  },
+  "generator": "offline-template-v1",
+  "items": [
+    {
+      "category": "unsupported_fact",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_001",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": "synth-0004",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [
+          "synth-0004::0005",
+          "synth-0004::0006"
+        ],
+        "generator": "offline-template-v1",
+        "template": "unsupported_unevaluated_dataset"
+      },
+      "question": "What test-set nDCG@10 does the full PyreRank model achieve on LexiNLI?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "in_domain_reasoning",
+      "ground_truth_chunk_ids": [
+        "synth-0012::0006",
+        "synth-0012::0005"
+      ],
+      "id": "eval_002",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0012",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "The full OstraCalib model reaches 49.4 nDCG@10 on the BioHopQA test set.",
+          "For the LexiNLI test split, we measure 49.0 nDCG@10 with the full OstraCalib model."
+        ],
+        "generator": "offline-template-v1",
+        "template": "reasoning_compare_datasets"
+      },
+      "question": "Is the test-set nDCG@10 of the full OstraCalib model higher on BioHopQA or on LexiNLI, and by how much?",
+      "reference_answer": "BioHopQA (49.4 vs 49.0, a gap of 0.4 nDCG@10)"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0015::0005"
+      ],
+      "id": "eval_003",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0015",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "The full VarnMix model reaches 74.8 exact match on the MedFactCheck test set."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_result"
+      },
+      "question": "How well does the complete VarnMix system do on the MedFactCheck test split in terms of EM score?",
+      "reference_answer": "74.8 exact match"
+    },
+    {
+      "category": "in_domain_reasoning",
+      "ground_truth_chunk_ids": [
+        "synth-0011::0005"
+      ],
+      "id": "eval_004",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0011",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "The full UlmoPath model reaches 50.1 accuracy on the CodeSeekBench test set.",
+          "For the PatentRet test split, we measure 49.8 accuracy with the full UlmoPath model."
+        ],
+        "generator": "offline-template-v1",
+        "template": "reasoning_compare_datasets"
+      },
+      "question": "Is the test-set accuracy of the full UlmoPath model higher on CodeSeekBench or on PatentRet, and by how much?",
+      "reference_answer": "CodeSeekBench (50.1 vs 49.8, a gap of 0.3 accuracy)"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0004::0006"
+      ],
+      "id": "eval_005",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0004",
+        "difficulty": "medium",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "On the CodeSeekBench test set, the full PyreRank model attains 52.8 nDCG@10."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_result"
+      },
+      "question": "What test-set nDCG@10 does the full PyreRank model achieve on CodeSeekBench?",
+      "reference_answer": "52.8 nDCG@10"
+    },
+    {
+      "category": "subtle_conflict",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_006",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": "synth-0015",
+        "contradicted_claim": "VarnMix outperforms DPR on SciClaimQA",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [
+          "synth-0015::0005"
+        ],
+        "generator": "offline-template-v1",
+        "template": "conflict_reversed_comparison"
+      },
+      "question": "Why does VarnMix fall behind DPR on SciClaimQA?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0012::0005"
+      ],
+      "id": "eval_007",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0012",
+        "difficulty": "medium",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "In comparison, ColBERT scores 41.8 nDCG@10 on the LexiNLI test set."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_baseline"
+      },
+      "question": "In the OstraCalib paper, what test-set nDCG@10 is reported for the ColBERT baseline on LexiNLI?",
+      "reference_answer": "41.8 nDCG@10"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0015::0005"
+      ],
+      "id": "eval_008",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0015",
+        "difficulty": "medium",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "The SPLADE baseline obtains 69.5 exact match on the MedFactCheck test set."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_baseline"
+      },
+      "question": "In the VarnMix paper, what test-set exact match is reported for the SPLADE baseline on MedFactCheck?",
+      "reference_answer": "69.5 exact match"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0013::0005"
+      ],
+      "id": "eval_009",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0013",
+        "difficulty": "medium",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "For the LexiNLI test split, we measure 45.7 nDCG@10 with the full HelioRank model."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_result"
+      },
+      "question": "What test-set nDCG@10 does the full HelioRank model achieve on LexiNLI?",
+      "reference_answer": "45.7 nDCG@10"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0007::0004"
+      ],
+      "id": "eval_010",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0007",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "Optimisation of SefiLens uses AdamW with a learning rate of 3e-5."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_lr"
+      },
+      "question": "Which learning rate is used to optimise SefiLens?",
+      "reference_answer": "a learning rate of 3e-5"
+    },
+    {
+      "category": "subtle_conflict",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_011",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": "synth-0012",
+        "contradicted_claim": "OstraCalib reaches 61.7, not 33.9",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [
+          "synth-0012::0005"
+        ],
+        "generator": "offline-template-v1",
+        "template": "conflict_wrong_value"
+      },
+      "question": "Given that the full OstraCalib model only reaches 33.9 nDCG@10 on the MedFactCheck test set, which component limits its performance?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0016::0005"
+      ],
+      "id": "eval_012",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0016",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "On the SciClaimQA test set, the full KestProb model attains 66.5 macro-F1."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_result"
+      },
+      "question": "How well does the complete KestProb system do on the SciClaimQA test split in terms of macro-averaged F1?",
+      "reference_answer": "66.5 macro-F1"
+    },
+    {
+      "category": "out_of_domain",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_013",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": null,
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "generator": "offline-template-v1",
+        "template": "ood_fixed"
+      },
+      "question": "Which mortgage refinancing option minimises closing fees for retirees?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0005::0005"
+      ],
+      "id": "eval_014",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0005",
+        "difficulty": "medium",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "In comparison, BM25 scores 42.0 nDCG@10 on the SciClaimQA test set."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_baseline"
+      },
+      "question": "In the CorviLens paper, what test-set nDCG@10 is reported for the BM25 baseline on SciClaimQA?",
+      "reference_answer": "42.0 nDCG@10"
+    },
+    {
+      "category": "subtle_conflict",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_015",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": "synth-0014",
+        "contradicted_claim": "BriskGate reaches 48.3, not 31.4",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [
+          "synth-0014::0005"
+        ],
+        "generator": "offline-template-v1",
+        "template": "conflict_wrong_value"
+      },
+      "question": "Given that the full BriskGate model only reaches 31.4 exact match on the LexiNLI test set, which component limits its performance?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "in_domain_reasoning",
+      "ground_truth_chunk_ids": [
+        "synth-0006::0006",
+        "synth-0006::0005"
+      ],
+      "id": "eval_016",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0006",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "For the MedFactCheck test split, we measure 89.4 nDCG@10 with the full LumiRetr model.",
+          "The full LumiRetr model reaches 68.8 nDCG@10 on the SciClaimQA test set."
+        ],
+        "generator": "offline-template-v1",
+        "template": "reasoning_compare_datasets"
+      },
+      "question": "Is the test-set nDCG@10 of the full LumiRetr model higher on MedFactCheck or on SciClaimQA, and by how much?",
+      "reference_answer": "MedFactCheck (89.4 vs 68.8, a gap of 20.6 nDCG@10)"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0011::0003"
+      ],
+      "id": "eval_017",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0011",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "UlmoPath is built on top of a ELECTRA encoder."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_encoder"
+      },
+      "question": "Which pretrained backbone is UlmoPath based on?",
+      "reference_answer": "ELECTRA"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0007::0004"
+      ],
+      "id": "eval_018",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0007",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "We train SefiLens for 30 epochs."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_epochs"
+      },
+      "question": "For how many epochs is SefiLens trained?",
+      "reference_answer": "30 epochs"
+    },
+    {
+      "category": "unsupported_fact",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_019",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": "synth-0005",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [
+          "synth-0005::0005",
+          "synth-0005::0006"
+        ],
+        "generator": "offline-template-v1",
+        "template": "unsupported_unevaluated_dataset"
+      },
+      "question": "What test-set nDCG@10 does the full CorviLens model achieve on MedFactCheck?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0001::0004"
+      ],
+      "id": "eval_020",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0001",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "We train QuorRetr for 3 epochs."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_epochs"
+      },
+      "question": "For how many epochs is QuorRetr trained?",
+      "reference_answer": "3 epochs"
+    },
+    {
+      "category": "out_of_domain",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_021",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": null,
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "generator": "offline-template-v1",
+        "template": "ood_fixed"
+      },
+      "question": "What tax bracket applies to freelance photographers in Portugal?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0002::0006"
+      ],
+      "id": "eval_022",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0002",
+        "difficulty": "medium",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "On the FinTabQA test set, the full ZenoLens model attains 77.0 Recall@20."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_result"
+      },
+      "question": "What test-set Recall@20 does the full ZenoLens model achieve on FinTabQA?",
+      "reference_answer": "77.0 Recall@20"
+    },
+    {
+      "category": "subtle_conflict",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_023",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": "synth-0013",
+        "contradicted_claim": "HelioRank outperforms Contriever on LexiNLI",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [
+          "synth-0013::0005"
+        ],
+        "generator": "offline-template-v1",
+        "template": "conflict_reversed_comparison"
+      },
+      "question": "Why does HelioRank fall behind Contriever on LexiNLI?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0003::0005"
+      ],
+      "id": "eval_024",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0003",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "On the MedFactCheck test set, the full NivoPath model attains 63.8 accuracy."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_result"
+      },
+      "question": "How well does the complete NivoPath system do on the MedFactCheck test split in terms of classification accuracy?",
+      "reference_answer": "63.8 accuracy"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0006::0005"
+      ],
+      "id": "eval_025",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0006",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "For the FinTabQA test split, we measure 81.2 nDCG@10 with the full LumiRetr model."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_result"
+      },
+      "question": "How well does the complete LumiRetr system do on the FinTabQA test split in terms of nDCG@10?",
+      "reference_answer": "81.2 nDCG@10"
+    },
+    {
+      "category": "in_domain_reasoning",
+      "ground_truth_chunk_ids": [
+        "synth-0011::0006"
+      ],
+      "id": "eval_026",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0011",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "The full UlmoPath model reaches 76.1 accuracy on the SciClaimQA test set.",
+          "The DPR baseline obtains 74.3 accuracy on the SciClaimQA test set."
+        ],
+        "generator": "offline-template-v1",
+        "template": "reasoning_margin"
+      },
+      "question": "By how many points does the full UlmoPath model beat DPR on the SciClaimQA test set, measured in accuracy?",
+      "reference_answer": "1.8 points (76.1 vs 74.3 accuracy)"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0006::0004"
+      ],
+      "id": "eval_027",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0006",
+        "difficulty": "medium",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "Training batches for LumiRetr contain 256 examples."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_batch"
+      },
+      "question": "What batch size is used when training LumiRetr?",
+      "reference_answer": "256 examples per batch"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0004::0004"
+      ],
+      "id": "eval_028",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0004",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "We train PyreRank for 10 epochs."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_epochs"
+      },
+      "question": "For how many epochs is PyreRank trained?",
+      "reference_answer": "10 epochs"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0014::0004"
+      ],
+      "id": "eval_029",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0014",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "Optimisation of BriskGate uses AdamW with a learning rate of 1e-5."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_lr"
+      },
+      "question": "Which learning rate is used to optimise BriskGate?",
+      "reference_answer": "a learning rate of 1e-5"
+    },
+    {
+      "category": "subtle_conflict",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_030",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": "synth-0014",
+        "contradicted_claim": "BriskGate outperforms SPLADE on LexiNLI",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [
+          "synth-0014::0005"
+        ],
+        "generator": "offline-template-v1",
+        "template": "conflict_reversed_comparison"
+      },
+      "question": "Why does BriskGate fall behind SPLADE on LexiNLI?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0003::0003"
+      ],
+      "id": "eval_031",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0003",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "NivoPath is built on top of a MiniLM encoder."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_encoder"
+      },
+      "question": "Which pretrained backbone is NivoPath based on?",
+      "reference_answer": "MiniLM"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0010::0004"
+      ],
+      "id": "eval_032",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0010",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "Optimisation of TamsaSift uses AdamW with a learning rate of 1e-5."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_lr"
+      },
+      "question": "Which learning rate is used to optimise TamsaSift?",
+      "reference_answer": "a learning rate of 1e-5"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0012::0003"
+      ],
+      "id": "eval_033",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0012",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "The encoder stack of OstraCalib has 24 transformer layers."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_layers"
+      },
+      "question": "How deep is the encoder of OstraCalib, in transformer layers?",
+      "reference_answer": "24 transformer layers"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0009::0004"
+      ],
+      "id": "eval_034",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0009",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "Optimisation of DralRetr uses AdamW with a learning rate of 2e-5."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_lr"
+      },
+      "question": "Which learning rate is used to optimise DralRetr?",
+      "reference_answer": "a learning rate of 2e-5"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0013::0005"
+      ],
+      "id": "eval_035",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0013",
+        "difficulty": "medium",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "The Contriever baseline obtains 48.5 nDCG@10 on the BioHopQA test set."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_baseline"
+      },
+      "question": "In the HelioRank paper, what test-set nDCG@10 is reported for the Contriever baseline on BioHopQA?",
+      "reference_answer": "48.5 nDCG@10"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0015::0004"
+      ],
+      "id": "eval_036",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0015",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "We train VarnMix for 5 epochs."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_epochs"
+      },
+      "question": "For how many epochs is VarnMix trained?",
+      "reference_answer": "5 epochs"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0009::0004"
+      ],
+      "id": "eval_037",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0009",
+        "difficulty": "medium",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "Training batches for DralRetr contain 32 examples."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_batch"
+      },
+      "question": "What batch size is used when training DralRetr?",
+      "reference_answer": "32 examples per batch"
+    },
+    {
+      "category": "in_domain_reasoning",
+      "ground_truth_chunk_ids": [
+        "synth-0008::0005"
+      ],
+      "id": "eval_038",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0008",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "The full VexaMix model reaches 64.1 macro-F1 on the MedFactCheck test set.",
+          "For the SciClaimQA test split, we measure 77.8 macro-F1 with the full VexaMix model."
+        ],
+        "generator": "offline-template-v1",
+        "template": "reasoning_compare_datasets"
+      },
+      "question": "Is the test-set macro-F1 of the full VexaMix model higher on MedFactCheck or on SciClaimQA, and by how much?",
+      "reference_answer": "SciClaimQA (77.8 vs 64.1, a gap of 13.7 macro-F1)"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0001::0004"
+      ],
+      "id": "eval_039",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0001",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "Optimisation of QuorRetr uses AdamW with a learning rate of 5e-5."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_lr"
+      },
+      "question": "Which learning rate is used to optimise QuorRetr?",
+      "reference_answer": "a learning rate of 5e-5"
+    },
+    {
+      "category": "in_domain_reasoning",
+      "ground_truth_chunk_ids": [
+        "synth-0009::0005"
+      ],
+      "id": "eval_040",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0009",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "The full DralRetr model reaches 66.5 nDCG@10 on the CodeSeekBench test set.",
+          "For the FinTabQA test split, we measure 87.2 nDCG@10 with the full DralRetr model."
+        ],
+        "generator": "offline-template-v1",
+        "template": "reasoning_compare_datasets"
+      },
+      "question": "Is the test-set nDCG@10 of the full DralRetr model higher on CodeSeekBench or on FinTabQA, and by how much?",
+      "reference_answer": "FinTabQA (87.2 vs 66.5, a gap of 20.7 nDCG@10)"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0008::0004"
+      ],
+      "id": "eval_041",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0008",
+        "difficulty": "medium",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "Training batches for VexaMix contain 64 examples."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_batch"
+      },
+      "question": "What batch size is used when training VexaMix?",
+      "reference_answer": "64 examples per batch"
+    },
+    {
+      "category": "out_of_domain",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_042",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": null,
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "generator": "offline-template-v1",
+        "template": "ood_fixed"
+      },
+      "question": "How do you fold a traditional origami crane from washi paper?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0003::0004"
+      ],
+      "id": "eval_043",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0003",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "Optimisation of NivoPath uses AdamW with a learning rate of 1e-4."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_lr"
+      },
+      "question": "Which learning rate is used to optimise NivoPath?",
+      "reference_answer": "a learning rate of 1e-4"
+    },
+    {
+      "category": "subtle_conflict",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_044",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": "synth-0004",
+        "contradicted_claim": "PyreRank outperforms DPR on ChronoNewsQA",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [
+          "synth-0004::0005"
+        ],
+        "generator": "offline-template-v1",
+        "template": "conflict_reversed_comparison"
+      },
+      "question": "Why does PyreRank fall behind DPR on ChronoNewsQA?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0001::0004"
+      ],
+      "id": "eval_045",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0001",
+        "difficulty": "medium",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "Training batches for QuorRetr contain 256 examples."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_batch"
+      },
+      "question": "What batch size is used when training QuorRetr?",
+      "reference_answer": "256 examples per batch"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0016::0003"
+      ],
+      "id": "eval_046",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0016",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "The encoder stack of KestProb has 12 transformer layers."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_layers"
+      },
+      "question": "How deep is the encoder of KestProb, in transformer layers?",
+      "reference_answer": "12 transformer layers"
+    },
+    {
+      "category": "out_of_domain",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_047",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": null,
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "generator": "offline-template-v1",
+        "template": "ood_fixed"
+      },
+      "question": "Which grape varieties dominate Rioja wine blends?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "out_of_domain",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_048",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": null,
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "generator": "offline-template-v1",
+        "template": "ood_fixed"
+      },
+      "question": "What caused the eruption of Mount Pinatubo in 1991?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "unsupported_fact",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_049",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": "synth-0002",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [
+          "synth-0002::0005",
+          "synth-0002::0006"
+        ],
+        "generator": "offline-template-v1",
+        "template": "unsupported_unevaluated_dataset"
+      },
+      "question": "What test-set Recall@20 does the full ZenoLens model achieve on BioHopQA?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0013::0006"
+      ],
+      "id": "eval_050",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0013",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "On the PatentRet test set, the full HelioRank model attains 50.4 nDCG@10."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_result"
+      },
+      "question": "How well does the complete HelioRank system do on the PatentRet test split in terms of ranking quality (nDCG@10)?",
+      "reference_answer": "50.4 nDCG@10"
+    },
+    {
+      "category": "subtle_conflict",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_051",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": "synth-0012",
+        "contradicted_claim": "OstraCalib reaches 49.0, not 36.8",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [
+          "synth-0012::0005"
+        ],
+        "generator": "offline-template-v1",
+        "template": "conflict_wrong_value"
+      },
+      "question": "Given that the full OstraCalib model only reaches 36.8 nDCG@10 on the LexiNLI test set, which component limits its performance?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0012::0006"
+      ],
+      "id": "eval_052",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0012",
+        "difficulty": "medium",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "In comparison, ColBERT scores 46.4 nDCG@10 on the BioHopQA test set."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_baseline"
+      },
+      "question": "In the OstraCalib paper, what test-set nDCG@10 is reported for the ColBERT baseline on BioHopQA?",
+      "reference_answer": "46.4 nDCG@10"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0012::0005"
+      ],
+      "id": "eval_053",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0012",
+        "difficulty": "medium",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "For the MedFactCheck test split, we measure 61.7 nDCG@10 with the full OstraCalib model."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_result"
+      },
+      "question": "What test-set nDCG@10 does the full OstraCalib model achieve on MedFactCheck?",
+      "reference_answer": "61.7 nDCG@10"
+    },
+    {
+      "category": "unsupported_fact",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_054",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": "synth-0005",
+        "difficulty": "medium",
+        "distractor_chunk_ids": [
+          "synth-0001::0002",
+          "synth-0002::0002",
+          "synth-0003::0000",
+          "synth-0003::0001",
+          "synth-0003::0005"
+        ],
+        "generator": "offline-template-v1",
+        "hallucinated_entity": "PlinthFuse",
+        "template": "unsupported_hallucinated_method"
+      },
+      "question": "What test-set nDCG@10 does PlinthFuse achieve on SciClaimQA?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "in_domain_reasoning",
+      "ground_truth_chunk_ids": [
+        "synth-0010::0005"
+      ],
+      "id": "eval_055",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0010",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "On the CodeSeekBench test set, the full TamsaSift model attains 91.1 nDCG@10.",
+          "In comparison, DPR scores 85.5 nDCG@10 on the CodeSeekBench test set."
+        ],
+        "generator": "offline-template-v1",
+        "template": "reasoning_margin"
+      },
+      "question": "By how many points does the full TamsaSift model beat DPR on the CodeSeekBench test set, measured in nDCG@10?",
+      "reference_answer": "5.6 points (91.1 vs 85.5 nDCG@10)"
+    },
+    {
+      "category": "unsupported_fact",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_056",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": "synth-0015",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [
+          "synth-0015::0003",
+          "synth-0015::0004"
+        ],
+        "generator": "offline-template-v1",
+        "template": "unsupported_unstated_dropout"
+      },
+      "question": "What dropout rate does VarnMix use?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "out_of_domain",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_057",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": null,
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "generator": "offline-template-v1",
+        "template": "ood_fixed"
+      },
+      "question": "Which tectonic plates collided to form the Himalayan mountain range?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "subtle_conflict",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_058",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": "synth-0016",
+        "contradicted_claim": "KestProb outperforms SPLADE on PatentRet",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [
+          "synth-0016::0006"
+        ],
+        "generator": "offline-template-v1",
+        "template": "conflict_reversed_comparison"
+      },
+      "question": "Why does KestProb fall behind SPLADE on PatentRet?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "unsupported_fact",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_059",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": "synth-0006",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [
+          "synth-0006::0005",
+          "synth-0006::0006"
+        ],
+        "generator": "offline-template-v1",
+        "template": "unsupported_unevaluated_dataset"
+      },
+      "question": "What test-set nDCG@10 does the full LumiRetr model achieve on BioHopQA?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "in_domain_reasoning",
+      "ground_truth_chunk_ids": [
+        "synth-0001::0005"
+      ],
+      "id": "eval_060",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0001",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "On the BioHopQA test set, the full QuorRetr model attains 85.2 exact match.",
+          "In comparison, ANCE scores 76.8 exact match on the BioHopQA test set."
+        ],
+        "generator": "offline-template-v1",
+        "template": "reasoning_margin"
+      },
+      "question": "By how many points does the full QuorRetr model beat ANCE on the BioHopQA test set, measured in exact match?",
+      "reference_answer": "8.4 points (85.2 vs 76.8 exact match)"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0004::0004"
+      ],
+      "id": "eval_061",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0004",
+        "difficulty": "medium",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "Training batches for PyreRank contain 128 examples."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_batch"
+      },
+      "question": "What batch size is used when training PyreRank?",
+      "reference_answer": "128 examples per batch"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0009::0006"
+      ],
+      "id": "eval_062",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0009",
+        "difficulty": "medium",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "In comparison, ANCE scores 71.0 nDCG@10 on the PatentRet test set."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_baseline"
+      },
+      "question": "In the DralRetr paper, what test-set ranking quality (nDCG@10) is reported for the ANCE baseline on PatentRet?",
+      "reference_answer": "71.0 nDCG@10"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0016::0004"
+      ],
+      "id": "eval_063",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0016",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "We train KestProb for 20 epochs."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_epochs"
+      },
+      "question": "For how many epochs is KestProb trained?",
+      "reference_answer": "20 epochs"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0012::0004"
+      ],
+      "id": "eval_064",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0012",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "We train OstraCalib for 8 epochs."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_epochs"
+      },
+      "question": "For how many epochs is OstraCalib trained?",
+      "reference_answer": "8 epochs"
+    },
+    {
+      "category": "unsupported_fact",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_065",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": "synth-0001",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [
+          "synth-0001::0005",
+          "synth-0001::0006"
+        ],
+        "generator": "offline-template-v1",
+        "template": "unsupported_unevaluated_dataset"
+      },
+      "question": "What test-set exact match does the full QuorRetr model achieve on SciClaimQA?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "in_domain_reasoning",
+      "ground_truth_chunk_ids": [
+        "synth-0010::0005",
+        "synth-0010::0006"
+      ],
+      "id": "eval_066",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0010",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "For the ChronoNewsQA test split, we measure 67.9 nDCG@10 with the full TamsaSift model.",
+          "The full TamsaSift model reaches 53.5 nDCG@10 on the SciClaimQA test set."
+        ],
+        "generator": "offline-template-v1",
+        "template": "reasoning_compare_datasets"
+      },
+      "question": "Is the test-set nDCG@10 of the full TamsaSift model higher on ChronoNewsQA or on SciClaimQA, and by how much?",
+      "reference_answer": "ChronoNewsQA (67.9 vs 53.5, a gap of 14.4 nDCG@10)"
+    },
+    {
+      "category": "in_domain_reasoning",
+      "ground_truth_chunk_ids": [
+        "synth-0008::0005"
+      ],
+      "id": "eval_067",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0008",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "For the SciClaimQA test split, we measure 77.8 macro-F1 with the full VexaMix model.",
+          "The DPR baseline obtains 72.0 macro-F1 on the SciClaimQA test set."
+        ],
+        "generator": "offline-template-v1",
+        "template": "reasoning_margin"
+      },
+      "question": "By how many points does the full VexaMix model beat DPR on the SciClaimQA test set, measured in macro-F1?",
+      "reference_answer": "5.8 points (77.8 vs 72.0 macro-F1)"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0002::0004"
+      ],
+      "id": "eval_068",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0002",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "Optimisation of ZenoLens uses AdamW with a learning rate of 2e-5."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_lr"
+      },
+      "question": "Which learning rate is used to optimise ZenoLens?",
+      "reference_answer": "a learning rate of 2e-5"
+    },
+    {
+      "category": "subtle_conflict",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_069",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": "synth-0015",
+        "contradicted_claim": "VarnMix reaches 74.8, not 41.1",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [
+          "synth-0015::0005"
+        ],
+        "generator": "offline-template-v1",
+        "template": "conflict_wrong_value"
+      },
+      "question": "Given that the full VarnMix model only reaches 41.1 exact match on the MedFactCheck test set, which component limits its performance?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "in_domain_reasoning",
+      "ground_truth_chunk_ids": [
+        "synth-0010::0005"
+      ],
+      "id": "eval_070",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0010",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "For the ChronoNewsQA test split, we measure 67.9 nDCG@10 with the full TamsaSift model.",
+          "On the CodeSeekBench test set, the full TamsaSift model attains 91.1 nDCG@10."
+        ],
+        "generator": "offline-template-v1",
+        "template": "reasoning_compare_datasets"
+      },
+      "question": "Is the test-set nDCG@10 of the full TamsaSift model higher on ChronoNewsQA or on CodeSeekBench, and by how much?",
+      "reference_answer": "CodeSeekBench (91.1 vs 67.9, a gap of 23.2 nDCG@10)"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0002::0004"
+      ],
+      "id": "eval_071",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0002",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "We train ZenoLens for 8 epochs."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_epochs"
+      },
+      "question": "For how many epochs is ZenoLens trained?",
+      "reference_answer": "8 epochs"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0016::0003"
+      ],
+      "id": "eval_072",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0016",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "KestProb is built on top of a RoBERTa encoder."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_encoder"
+      },
+      "question": "Which pretrained backbone is KestProb based on?",
+      "reference_answer": "RoBERTa"
+    },
+    {
+      "category": "in_domain_reasoning",
+      "ground_truth_chunk_ids": [
+        "synth-0001::0005"
+      ],
+      "id": "eval_073",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0001",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "On the BioHopQA test set, the full QuorRetr model attains 85.2 exact match.",
+          "On the LexiNLI test set, the full QuorRetr model attains 84.0 exact match."
+        ],
+        "generator": "offline-template-v1",
+        "template": "reasoning_compare_datasets"
+      },
+      "question": "Is the test-set exact match of the full QuorRetr model higher on BioHopQA or on LexiNLI, and by how much?",
+      "reference_answer": "BioHopQA (85.2 vs 84.0, a gap of 1.2 exact match)"
+    },
+    {
+      "category": "subtle_conflict",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_074",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": "synth-0006",
+        "contradicted_claim": "LumiRetr outperforms BM25 on FinTabQA",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [
+          "synth-0006::0005"
+        ],
+        "generator": "offline-template-v1",
+        "template": "conflict_reversed_comparison"
+      },
+      "question": "Why does LumiRetr fall behind BM25 on FinTabQA?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "unsupported_fact",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_075",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": "synth-0010",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [
+          "synth-0010::0003",
+          "synth-0010::0004"
+        ],
+        "generator": "offline-template-v1",
+        "template": "unsupported_unstated_weight_decay"
+      },
+      "question": "What weight decay is applied when optimising TamsaSift?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "unsupported_fact",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_076",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": "synth-0014",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [
+          "synth-0014::0005",
+          "synth-0014::0006"
+        ],
+        "generator": "offline-template-v1",
+        "template": "unsupported_unevaluated_dataset"
+      },
+      "question": "What test-set exact match does the full BriskGate model achieve on FinTabQA?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "in_domain_reasoning",
+      "ground_truth_chunk_ids": [
+        "synth-0012::0006",
+        "synth-0012::0005"
+      ],
+      "id": "eval_077",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0012",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "The full OstraCalib model reaches 49.4 nDCG@10 on the BioHopQA test set.",
+          "For the MedFactCheck test split, we measure 61.7 nDCG@10 with the full OstraCalib model."
+        ],
+        "generator": "offline-template-v1",
+        "template": "reasoning_compare_datasets"
+      },
+      "question": "Is the test-set nDCG@10 of the full OstraCalib model higher on BioHopQA or on MedFactCheck, and by how much?",
+      "reference_answer": "MedFactCheck (61.7 vs 49.4, a gap of 12.3 nDCG@10)"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0008::0003"
+      ],
+      "id": "eval_078",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0008",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "The backbone of VexaMix is a pretrained DeBERTa-v3 encoder."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_encoder"
+      },
+      "question": "Which pretrained backbone is VexaMix based on?",
+      "reference_answer": "DeBERTa-v3"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0008::0005"
+      ],
+      "id": "eval_079",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0008",
+        "difficulty": "medium",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "In comparison, DPR scores 56.0 macro-F1 on the MedFactCheck test set."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_baseline"
+      },
+      "question": "In the VexaMix paper, what test-set macro-F1 is reported for the DPR baseline on MedFactCheck?",
+      "reference_answer": "56.0 macro-F1"
+    },
+    {
+      "category": "in_domain_reasoning",
+      "ground_truth_chunk_ids": [
+        "synth-0001::0006"
+      ],
+      "id": "eval_080",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0001",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "For the ChronoNewsQA test split, we measure 76.5 exact match with the full QuorRetr model.",
+          "The BM25 baseline obtains 69.5 exact match on the ChronoNewsQA test set."
+        ],
+        "generator": "offline-template-v1",
+        "template": "reasoning_margin"
+      },
+      "question": "By how many points does the full QuorRetr model beat BM25 on the ChronoNewsQA test set, measured in exact match?",
+      "reference_answer": "7.0 points (76.5 vs 69.5 exact match)"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0016::0006"
+      ],
+      "id": "eval_081",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0016",
+        "difficulty": "medium",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "For the PatentRet test split, we measure 88.9 macro-F1 with the full KestProb model."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_result"
+      },
+      "question": "What test-set macro-averaged F1 does the full KestProb model achieve on PatentRet?",
+      "reference_answer": "88.9 macro-F1"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0008::0003"
+      ],
+      "id": "eval_082",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0008",
+        "difficulty": "medium",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "Each layer of VexaMix uses a hidden size of 768."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_hidden"
+      },
+      "question": "What is the hidden dimension of each VexaMix layer?",
+      "reference_answer": "a hidden size of 768"
+    },
+    {
+      "category": "out_of_domain",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_083",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": null,
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "generator": "offline-template-v1",
+        "template": "ood_fixed"
+      },
+      "question": "Who composed the baroque cantata Jauchzet Gott in allen Landen?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0010::0004"
+      ],
+      "id": "eval_084",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0010",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "We train TamsaSift for 10 epochs."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_epochs"
+      },
+      "question": "For how many epochs is TamsaSift trained?",
+      "reference_answer": "10 epochs"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0014::0003"
+      ],
+      "id": "eval_085",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0014",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "BriskGate is built on top of a T5-encoder encoder."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_encoder"
+      },
+      "question": "Which pretrained backbone is BriskGate based on?",
+      "reference_answer": "T5-encoder"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0008::0004"
+      ],
+      "id": "eval_086",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0008",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "We train VexaMix for 30 epochs."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_epochs"
+      },
+      "question": "For how many epochs is VexaMix trained?",
+      "reference_answer": "30 epochs"
+    },
+    {
+      "category": "in_domain_reasoning",
+      "ground_truth_chunk_ids": [
+        "synth-0004::0005",
+        "synth-0004::0006"
+      ],
+      "id": "eval_087",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0004",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "On the BioHopQA test set, the full PyreRank model attains 66.7 nDCG@10.",
+          "On the CodeSeekBench test set, the full PyreRank model attains 52.8 nDCG@10."
+        ],
+        "generator": "offline-template-v1",
+        "template": "reasoning_compare_datasets"
+      },
+      "question": "Is the test-set nDCG@10 of the full PyreRank model higher on BioHopQA or on CodeSeekBench, and by how much?",
+      "reference_answer": "BioHopQA (66.7 vs 52.8, a gap of 13.9 nDCG@10)"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0009::0005"
+      ],
+      "id": "eval_088",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0009",
+        "difficulty": "medium",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "In comparison, Contriever scores 79.8 nDCG@10 on the FinTabQA test set."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_baseline"
+      },
+      "question": "In the DralRetr paper, what test-set nDCG@10 is reported for the Contriever baseline on FinTabQA?",
+      "reference_answer": "79.8 nDCG@10"
+    },
+    {
+      "category": "in_domain_reasoning",
+      "ground_truth_chunk_ids": [
+        "synth-0009::0005"
+      ],
+      "id": "eval_089",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0009",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "For the FinTabQA test split, we measure 87.2 nDCG@10 with the full DralRetr model.",
+          "In comparison, Contriever scores 79.8 nDCG@10 on the FinTabQA test set."
+        ],
+        "generator": "offline-template-v1",
+        "template": "reasoning_margin"
+      },
+      "question": "By how many points does the full DralRetr model beat Contriever on the FinTabQA test set, measured in nDCG@10?",
+      "reference_answer": "7.4 points (87.2 vs 79.8 nDCG@10)"
+    },
+    {
+      "category": "out_of_domain",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_090",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": null,
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "generator": "offline-template-v1",
+        "template": "ood_fixed"
+      },
+      "question": "What is the ideal rotation schedule for alpine sheep pastures?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0003::0003"
+      ],
+      "id": "eval_091",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0003",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "The encoder stack of NivoPath has 8 transformer layers."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_layers"
+      },
+      "question": "How deep is the encoder of NivoPath, in transformer layers?",
+      "reference_answer": "8 transformer layers"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0014::0006"
+      ],
+      "id": "eval_092",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0014",
+        "difficulty": "medium",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "The full BriskGate model reaches 75.4 exact match on the MedFactCheck test set."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_result"
+      },
+      "question": "What test-set EM score does the full BriskGate model achieve on MedFactCheck?",
+      "reference_answer": "75.4 exact match"
+    },
+    {
+      "category": "in_domain_reasoning",
+      "ground_truth_chunk_ids": [
+        "synth-0003::0006",
+        "synth-0003::0005"
+      ],
+      "id": "eval_093",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0003",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "For the LexiNLI test split, we measure 60.9 accuracy with the full NivoPath model.",
+          "On the SciClaimQA test set, the full NivoPath model attains 51.0 accuracy."
+        ],
+        "generator": "offline-template-v1",
+        "template": "reasoning_compare_datasets"
+      },
+      "question": "Is the test-set accuracy of the full NivoPath model higher on LexiNLI or on SciClaimQA, and by how much?",
+      "reference_answer": "LexiNLI (60.9 vs 51.0, a gap of 9.9 accuracy)"
+    },
+    {
+      "category": "in_domain_reasoning",
+      "ground_truth_chunk_ids": [
+        "synth-0013::0005",
+        "synth-0013::0006"
+      ],
+      "id": "eval_094",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0013",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "On the BioHopQA test set, the full HelioRank model attains 49.8 nDCG@10.",
+          "On the PatentRet test set, the full HelioRank model attains 50.4 nDCG@10."
+        ],
+        "generator": "offline-template-v1",
+        "template": "reasoning_compare_datasets"
+      },
+      "question": "Is the test-set nDCG@10 of the full HelioRank model higher on BioHopQA or on PatentRet, and by how much?",
+      "reference_answer": "PatentRet (50.4 vs 49.8, a gap of 0.6 nDCG@10)"
+    },
+    {
+      "category": "in_domain_reasoning",
+      "ground_truth_chunk_ids": [
+        "synth-0014::0005"
+      ],
+      "id": "eval_095",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0014",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "The full BriskGate model reaches 45.1 exact match on the PatentRet test set.",
+          "In comparison, SPLADE scores 40.2 exact match on the PatentRet test set."
+        ],
+        "generator": "offline-template-v1",
+        "template": "reasoning_margin"
+      },
+      "question": "By how many points does the full BriskGate model beat SPLADE on the PatentRet test set, measured in exact match?",
+      "reference_answer": "4.9 points (45.1 vs 40.2 exact match)"
+    },
+    {
+      "category": "in_domain_factoid",
+      "ground_truth_chunk_ids": [
+        "synth-0002::0003"
+      ],
+      "id": "eval_096",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0002",
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "The encoder stack of ZenoLens has 16 transformer layers."
+        ],
+        "generator": "offline-template-v1",
+        "template": "factoid_layers"
+      },
+      "question": "How deep is the encoder of ZenoLens, in transformer layers?",
+      "reference_answer": "16 transformer layers"
+    },
+    {
+      "category": "in_domain_reasoning",
+      "ground_truth_chunk_ids": [
+        "synth-0013::0005"
+      ],
+      "id": "eval_097",
+      "is_answerable": true,
+      "metadata": {
+        "arxiv_id": "synth-0013",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [],
+        "evidence_sentences": [
+          "On the BioHopQA test set, the full HelioRank model attains 49.8 nDCG@10.",
+          "For the LexiNLI test split, we measure 45.7 nDCG@10 with the full HelioRank model."
+        ],
+        "generator": "offline-template-v1",
+        "template": "reasoning_compare_datasets"
+      },
+      "question": "Is the test-set nDCG@10 of the full HelioRank model higher on BioHopQA or on LexiNLI, and by how much?",
+      "reference_answer": "BioHopQA (49.8 vs 45.7, a gap of 4.1 nDCG@10)"
+    },
+    {
+      "category": "unsupported_fact",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_098",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": "synth-0016",
+        "difficulty": "hard",
+        "distractor_chunk_ids": [
+          "synth-0016::0005",
+          "synth-0016::0006"
+        ],
+        "generator": "offline-template-v1",
+        "template": "unsupported_unevaluated_dataset"
+      },
+      "question": "What test-set macro-F1 does the full KestProb model achieve on LexiNLI?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "out_of_domain",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_099",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": null,
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "generator": "offline-template-v1",
+        "template": "ood_fixed"
+      },
+      "question": "How many wickets did the bowler take in the 1932 Bodyline series?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    },
+    {
+      "category": "out_of_domain",
+      "ground_truth_chunk_ids": [],
+      "id": "eval_100",
+      "is_answerable": false,
+      "metadata": {
+        "arxiv_id": null,
+        "difficulty": "easy",
+        "distractor_chunk_ids": [],
+        "generator": "offline-template-v1",
+        "template": "ood_fixed"
+      },
+      "question": "What glaze temperature suits porcelain stoneware in a wood kiln?",
+      "reference_answer": "I do not have sufficient information in the context to answer this question."
+    }
+  ],
+  "schema_version": "1.0",
+  "seed": 42
+}

@@ -1,8 +1,8 @@
 """Shared fixtures. Every test here runs offline with no model weights.
 
-``HashingEmbedder`` stands in for the sentence-transformer. It hashes tokens into a
-fixed-size bag-of-words vector, so dense similarity is deterministic and predictable,
-which lets tests assert exact rankings.
+``HashingEmbedder`` (from ``src.retriever``) stands in for the sentence-transformer.
+It hashes tokens into a fixed-size bag-of-words vector, so dense similarity is
+deterministic and predictable, which lets tests assert exact rankings.
 
 Tests marked ``integration`` need the network or downloaded models. They only run
 when ``RUN_INTEGRATION=1`` is set.
@@ -10,7 +10,6 @@ when ``RUN_INTEGRATION=1`` is set.
 
 from __future__ import annotations
 
-import hashlib
 import os
 from typing import Sequence
 
@@ -18,7 +17,7 @@ import numpy as np
 import pytest
 
 from src.data_loader import Chunk, make_chunk_id
-from src.retriever import tokenize
+from src.retriever import HashingEmbedder  # noqa: F401  (re-exported for tests)
 
 
 def pytest_collection_modifyitems(config, items):
@@ -28,27 +27,6 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if "integration" in item.keywords:
             item.add_marker(skip)
-
-
-class HashingEmbedder:
-    """Deterministic feature-hashing embedder (md5, so stable across processes)."""
-
-    def __init__(self, dim: int = 256) -> None:
-        self.dim = dim
-        self.name = f"hashing-{dim}"
-        self.calls: list[tuple[int, bool]] = []
-
-    def _bucket(self, token: str) -> int:
-        return int(hashlib.md5(token.encode()).hexdigest(), 16) % self.dim
-
-    def encode(self, texts: Sequence[str], *, is_query: bool = False) -> np.ndarray:
-        self.calls.append((len(texts), is_query))
-        out = np.zeros((len(texts), self.dim), dtype=np.float32)
-        for row, text in enumerate(texts):
-            for tok in tokenize(text):
-                out[row, self._bucket(tok)] += 1.0
-        norms = np.linalg.norm(out, axis=1, keepdims=True)
-        return out / np.maximum(norms, 1e-12)
 
 
 class FixedEmbedder:

@@ -18,5 +18,9 @@ requests>=2.31
 numpy>=1.26
 matplotlib>=3.8
 
+# --- LLM benchmark generation (optional; imported lazily) -------------------
+anthropic>=1.0
+openai>=1.40
+
 # --- Testing ---------------------------------------------------------------
 pytest>=8.0

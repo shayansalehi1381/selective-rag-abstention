@@ -17,6 +17,7 @@ on purpose: they are features for the abstention layer (Phase 4).
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import re
@@ -178,6 +179,31 @@ class SentenceTransformerEmbedder:
         return np.asarray(vectors, dtype=np.float32)
 
 
+class HashingEmbedder:
+    """Deterministic, offline feature-hashing embedder (md5 buckets over ``tokenize``).
+
+    It is not semantic: similarity is lexical overlap. It exists so that tests, CI and
+    sandboxes without model weights can exercise the dense path end to end. Never
+    report numbers from it as dense-retrieval results.
+    """
+
+    def __init__(self, dim: int = 256) -> None:
+        self.dim = dim
+        self.name = f"hashing-{dim}"
+        self.calls: list[tuple[int, bool]] = []
+
+    def _bucket(self, token: str) -> int:
+        return int(hashlib.md5(token.encode()).hexdigest(), 16) % self.dim
+
+    def encode(self, texts: Sequence[str], *, is_query: bool = False) -> np.ndarray:
+        self.calls.append((len(texts), is_query))
+        out = np.zeros((len(texts), self.dim), dtype=np.float32)
+        for row, text in enumerate(texts):
+            for tok in tokenize(text):
+                out[row, self._bucket(tok)] += 1.0
+        return l2_normalize(out)
+
+
 def l2_normalize(x: np.ndarray, eps: float = 1e-12) -> np.ndarray:
     norms = np.linalg.norm(x, axis=1, keepdims=True)
     return (x / np.maximum(norms, eps)).astype(np.float32)
@@ -280,6 +306,9 @@ def reciprocal_rank_fusion(
 # ---------------------------------------------------------------------------
 
 
+RETRIEVAL_MODES = ("hybrid", "sparse", "dense")
+
+
 @dataclass(frozen=True)
 class RetrievalResult:
     chunk: Chunk
@@ -352,7 +381,16 @@ class HybridRetriever:
         logger.info("indexed %d chunks (dense dim=%s)", len(chunks), self.dense.dim)
         return self
 
-    def retrieve(self, query: str, top_k: int = 5) -> list[RetrievalResult]:
+    def retrieve(self, query: str, top_k: int = 5, *, mode: str = "hybrid") -> list[RetrievalResult]:
+        """Retrieve ``top_k`` chunks.
+
+        ``mode`` selects ``"hybrid"`` (RRF fusion, the default), ``"sparse"`` (BM25 only)
+        or ``"dense"`` (FAISS only). In the single-retriever modes ``score`` is that
+        retriever's raw score. All modes share one index, which keeps baseline
+        comparisons fair.
+        """
+        if mode not in RETRIEVAL_MODES:
+            raise ValueError(f"mode must be one of {RETRIEVAL_MODES}")
         if not self.is_indexed:
             raise RuntimeError("retriever has no index; call index() or load() first")
         if top_k <= 0:
@@ -361,9 +399,23 @@ class HybridRetriever:
             return []
 
         pool = max(self.candidate_pool, top_k)
-        bm25_hits = self.bm25.search(query, pool)
-        query_vec = self.embedder.encode([query], is_query=True)[0]
-        dense_hits = self.dense.search(query_vec, pool)
+        bm25_hits = self.bm25.search(query, pool) if mode != "dense" else []
+        dense_hits: list[tuple[int, float]] = []
+        if mode != "sparse":
+            query_vec = self.embedder.encode([query], is_query=True)[0]
+            dense_hits = self.dense.search(query_vec, pool)
+
+        if mode != "hybrid":
+            hits = bm25_hits if mode == "sparse" else dense_hits
+            results = []
+            for rank, (i, score) in enumerate(hits[:top_k], start=1):
+                per_retriever = (
+                    {"bm25_rank": rank, "bm25_score": score}
+                    if mode == "sparse"
+                    else {"dense_rank": rank, "dense_score": score}
+                )
+                results.append(RetrievalResult(chunk=self.chunks[i], score=score, rank=rank, **per_retriever))
+            return results
 
         bm25_info = {i: (r, s) for r, (i, s) in enumerate(bm25_hits, start=1)}
         dense_info = {i: (r, s) for r, (i, s) in enumerate(dense_hits, start=1)}

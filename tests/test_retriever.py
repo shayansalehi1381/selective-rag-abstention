@@ -325,3 +325,38 @@ def test_real_bge_embedder_end_to_end(corpus_chunks):
     # Paraphrase with little lexical overlap: dense semantics must carry it.
     top = retriever.retrieve("statistical guarantees for prediction sets", top_k=1)[0]
     assert top.chunk.chunk_index == 2
+
+
+class TestRetrievalModes:
+    def test_sparse_mode_matches_bm25(self, retriever):
+        query = "reciprocal rank fusion of ranked lists"
+        expected = retriever.bm25.search(query, 3)
+        results = retriever.retrieve(query, top_k=3, mode="sparse")
+        assert [(r.chunk.chunk_index, r.score) for r in results] == [(i, s) for i, s in expected]
+        assert all(r.dense_rank is None and r.bm25_rank == r.rank for r in results)
+
+    def test_dense_mode_matches_faiss(self, retriever):
+        query = "conformal coverage guarantees"
+        q_vec = retriever.embedder.encode([query], is_query=True)[0]
+        # retrieve() searches the full candidate pool, so compare against the same depth
+        # (FAISS breaks score ties differently for different k).
+        expected = retriever.dense.search(q_vec, retriever.candidate_pool)[:4]
+        results = retriever.retrieve(query, top_k=4, mode="dense")
+        assert [r.chunk.chunk_index for r in results] == [i for i, _ in expected]
+        assert [r.score for r in results] == pytest.approx([s for _, s in expected])
+        assert all(r.bm25_rank is None and r.dense_rank == r.rank for r in results)
+
+    def test_sparse_mode_skips_the_embedder(self, retriever, hashing_embedder):
+        n_calls = len(hashing_embedder.calls)
+        retriever.retrieve("faiss", top_k=2, mode="sparse")
+        assert len(hashing_embedder.calls) == n_calls
+
+    def test_sparse_zero_overlap_is_empty(self, retriever):
+        assert retriever.retrieve("zebra giraffe", top_k=3, mode="sparse") == []
+
+    def test_hybrid_is_default(self, retriever):
+        assert retriever.retrieve("coverage", top_k=3) == retriever.retrieve("coverage", top_k=3, mode="hybrid")
+
+    def test_invalid_mode(self, retriever):
+        with pytest.raises(ValueError, match="mode"):
+            retriever.retrieve("coverage", mode="colbert")

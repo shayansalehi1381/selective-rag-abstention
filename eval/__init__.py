@@ -1,1 +1,1 @@
-"""Evaluation tooling: synthetic QA generation and selective-prediction metrics."""
+"""Evaluation suite: ground-truth generation (synthetic_gen), schemas and the retrieval benchmark (evaluate)."""
