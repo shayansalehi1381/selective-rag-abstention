@@ -14,6 +14,7 @@ SDKs are imported lazily, so importing this module needs neither package.
 from __future__ import annotations
 
 import json
+import os
 from typing import Any, Protocol
 
 
@@ -78,7 +79,9 @@ class OpenAICompatibleClient:
         if client is None:
             from openai import OpenAI
 
-            client = OpenAI(base_url=base_url)
+            # A local model on CPU can be very slow; fail with a clear timeout instead of hanging for the
+            # SDK default of 10 minutes x 3 attempts. Override with SRAG_LLM_TIMEOUT (seconds).
+            client = OpenAI(base_url=base_url, timeout=float(os.environ.get("SRAG_LLM_TIMEOUT", "180")), max_retries=1)
         self._client = client
 
     def complete(self, system: str, prompt: str, *, temperature: float | None, max_tokens: int) -> str:
