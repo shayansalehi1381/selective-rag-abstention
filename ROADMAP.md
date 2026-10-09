@@ -192,8 +192,9 @@
 - [x] 34 API tests plus override/lock unit tests (357 offline tests in total), verified on clean
       Python 3.10 and 3.13 installs; live uvicorn smoke test with curl; load check (about 66 req/s
       per process with offline stand-ins, bounded by the GIL-holding mock reranker)
-- Not verified here: the Docker build and the CI run itself (no Docker daemon or GitHub runner in
-  the development sandbox). The image's install and run path was reproduced in a clean venv.
+- Verified on GitHub Actions ([run #1](https://github.com/shayansalehi1381/selective-rag-abstention/actions/runs/37975735704)):
+  lint, offline tests on 3.10 / 3.12 / 3.13, eval-set reproducibility, and the Docker build + smoke test
+  (one answered query, one gated query) all pass.
 - [ ] Future: shared policy store across replicas, async LLM client, Prometheus metrics, auth for
       `/v1/query`, and the real-model latency budget (retrieval p95 < 100 ms at ~10k chunks)
 
