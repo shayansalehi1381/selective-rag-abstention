@@ -993,6 +993,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    for noisy in ("httpx", "httpcore", "huggingface_hub", "urllib3", "sentence_transformers"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)  # per-request INFO lines drown the real output
     quotas = Quotas(**{c.value: getattr(args, c.value) for c in Category})
     if args.offline:
         eval_set, _ = build_offline_eval_set(seed=args.seed, quotas=quotas, corpus_path=args.corpus,

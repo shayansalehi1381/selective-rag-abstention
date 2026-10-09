@@ -216,3 +216,10 @@
 - Angelopoulos, Bates, Fisch, Lei & Schuster (2022). *Conformal Risk Control.*
 - Angelopoulos, Bates, Candès, Jordan & Lei (2021). *Learn then Test: Calibrating Predictive Algorithms to Achieve Risk Control.*
 - Kamath, Jia & Liang (2020). *Selective Question Answering under Domain Shift.* ACL.
+
+## Post-Phase-7 notes
+
+- First real-model retrieval run (bge-small-en-v1.5 + MS MARCO MiniLM cross-encoder, Windows): dense AUROC 0.916,
+  hybrid Hit@1 0.929, and the cross-encoder did not beat hybrid (MRR -0.038). Results are in the README, Benchmark §1.
+- Next: run `eval.abstention_eval` and `eval.e2e_eval` with real models (and a real LLM reader) and replace the offline tables.
+- CI now also runs the test suite on `windows-latest`.

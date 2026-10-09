@@ -40,6 +40,23 @@ jobs:
           python -m eval.synthetic_gen generate --offline --output data/eval/eval_set.json
           git diff --exit-code -- data/eval/eval_set.json data/eval/synthetic_corpus.jsonl
 
+  test-windows:
+    name: tests (Windows, Python 3.12)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install (offline extras only)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[serving,plots,llm,dev]"
+      - name: Offline test suite
+        run: python -m pytest -q
+
   docker:
     name: docker image (offline backends)
     runs-on: ubuntu-latest

@@ -161,6 +161,8 @@ percentile over 200 splits.
 
 ### 1. Retrieval (answerable items, n = 70)
 
+Offline stand-ins (hashing embedder, mock reranker; what CI reproduces byte-for-byte):
+
 | Retriever | Hit@1 | Hit@5 | MRR@10 | Recall@10 | Top-1 AUROC (answerable vs not) |
 |---|---|---|---|---|---|
 | Dense (FAISS) | 0.714 | **1.000** | 0.843 | **1.000** | 0.667 |
@@ -171,6 +173,27 @@ percentile over 200 splits.
 The mock reranker doesn't help. All of its misses are vocabulary mismatch (e.g. *"backbone … based
 on"* vs *"built on top of … encoder"*), which a lexical heuristic cannot bridge by construction.
 Its weights were not tuned on the eval set to hide this.
+
+#### Real models (bge-small-en-v1.5 + `cross-encoder/ms-marco-MiniLM-L6-v2`)
+
+Measured on the author's Windows machine with `python -m eval.evaluate run --baseline --embedder bge
+--reranker cross-encoder --strict-reranker` (same eval set, n = 70, so confidence intervals are wide):
+
+| Retriever | Hit@1 | MRR@10 | Top-1 AUROC (answerable vs not) |
+|---|---|---|---|
+| Dense (bge-small) | 0.900 | 0.950 | **0.916** [0.858, 0.966] |
+| Sparse (BM25) | 0.914 | 0.931 | 0.651 |
+| Hybrid (RRF, k = 60) | **0.929** | **0.964** | 0.739 |
+| Hybrid + cross-encoder (MS MARCO MiniLM) | 0.871 | 0.926 | 0.816 |
+
+* A real embedder fixes dense retrieval (Hit@1 0.714 → 0.900) and makes its top-1 score the strongest
+  answerable-vs-not signal (AUROC 0.667 → 0.916). The RRF score is rank-based, so as a confidence signal it is weak.
+* The off-the-shelf MS MARCO cross-encoder does **not** improve on hybrid retrieval here: MRR −0.038 and
+  Recall@3 −0.043 (both significant under the paired bootstrap), Hit@1 −0.057 (not significant). Its logit is a
+  better abstention signal than RRF (AUROC 0.816 vs 0.739, difference not significant).
+* Plausible cause (not tested): the cross-encoder is trained on web passages, while this corpus is numeric and
+  entity-heavy with in-paper hard negatives, and hybrid is already near ceiling. With n = 70 and several
+  comparisons, treat these as indications, not conclusions.
 
 ### 2. Abstention signals (label: answerable and gold evidence in the top-3; 66/100 safe)
 
@@ -231,6 +254,11 @@ Its weights were not tuned on the eval set to hide this.
   implemented for that next step.
 
 ## Reproducibility
+
+> **Windows:** create the venv with `py -m venv .venv` and activate with `.venv\Scripts\activate`; use
+> `set NAME=value` (cmd) or `$env:NAME="value"` (PowerShell) instead of `export`; run every command from the
+> repository root. The test suite runs on `windows-latest` in CI.
+
 
 ### Install
 ```bash

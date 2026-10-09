@@ -453,6 +453,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    for noisy in ("httpx", "httpcore", "huggingface_hub", "urllib3", "sentence_transformers"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)  # per-request INFO lines drown the real output
     if args.headline_alpha not in args.alphas:
         args.alphas = sorted(set(args.alphas) | {args.headline_alpha})
     eval_set = EvalSet.load(args.eval_set)
