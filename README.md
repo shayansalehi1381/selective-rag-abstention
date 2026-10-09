@@ -13,7 +13,8 @@ finite-sample, distribution-free guarantee on the error rate among answered ques
 
 > **TL;DR (α = 0.2).** Standard RAG answers every unanswerable question: hallucination rate
 > **1.00**, selective risk 0.71. Putting a calibrated gate in front of the reader cuts
-> hallucination to **0.04–0.05** and selective risk to **0.17–0.18**, with lower hallucination
+> hallucination to **0.04–0.05** and selective risk to **0.17–0.18** (mock reader; with a local 7B LLM
+> reader hallucination falls to 0.003 but selective risk stays at 0.39), with lower hallucination
 > in 100% of the 200 evaluation splits. The empirical (ERM) threshold breaks its α target in
 > 34–54% of splits. LTT holds its guarantee (violation rate **≤ 2%**, well under δ = 10%); with
 > real retrieval models it answers 33% of questions at 0.09 test risk, but with 30 calibration
@@ -22,8 +23,9 @@ finite-sample, distribution-free guarantee on the error rate among answered ques
 > **What was run with which models.** Retrieval and abstention were benchmarked both offline
 > (hashing embedder, mock reranker) and with real models (bge-small-en-v1.5 and an MS MARCO
 > cross-encoder). The end-to-end benchmark used the real retriever and reranker but the **mock
-> extractive reader**; a run with an LLM reader (Claude or any OpenAI-compatible model) is
-> implemented but **not yet done**, so absolute end-to-end accuracy is a floor. See
+> extractive reader** in one table and a **local 7B LLM reader (Qwen2.5 via Ollama)** in another. With either
+> reader, LTT could not certify a useful threshold at α = 0.2 on 30 calibration items; a stronger reader (or
+> more calibration data) is untested. See
 > [Reproducibility](#reproducibility).
 
 ---
@@ -286,8 +288,38 @@ The picture matches the offline run. The paired per-split drop in hallucination 
 ERM gate (100% of splits lower). ERM still violates the α = 0.2 target in about 43% of splits. LTT keeps violations at
 or below 1% but answers almost nothing at α = 0.2 (coverage 0.003, abstains on everything in 99% of splits); at
 α = 0.3 it reaches coverage 0.10 with 6.5% violations, and at α = 0.1 it abstains always. With a reader that is right
-on roughly 30% of questions, the certificate is simply not attainable at this calibration size. A real LLM reader
-is the missing piece for a fair LTT result.
+on roughly 30% of questions, the certificate is simply not attainable at this calibration size. The next table
+repeats the run with a real (local) LLM reader.
+
+#### Real retriever, reranker and a local LLM reader (Qwen2.5-7B via Ollama)
+
+Same benchmark with `--generator openai --generator-model qwen2.5:7b --base-url http://localhost:11434/v1` (author's
+Windows machine, 200 splits, answers cached). Only the reader changed relative to the previous table.
+
+| System | Coverage | Selective risk ↓ | Hallucination ↓ | Accuracy ↑ | Violation |
+|---|---|---|---|---|---|
+| Standard RAG (forced reader) | 0.881 | 0.772 | 0.602 | 0.320 | — |
+| RAG + reader self-abstention | 0.687 | 0.679 | 0.268 | 0.440 | — |
+| Selective RAG (ERM gate) | 0.093 | 0.387 [0.00, 1.00] | 0.003 | 0.351 | 44.0% |
+| Selective RAG (LTT gate) | 0.000 | — | 0.000 | 0.300 | 0.0% |
+
+Reader outcomes without a gate: 23 of 50 factoid items correct, 0 of 20 reasoning items, 0 of 30 unanswerable items
+answered correctly (only abstaining counts). With the gate the hallucination rate falls from 0.60 to 0.003 and the
+reader is skipped for most queries, but the gate also answers only about 9% of questions, and the few it answers are
+still wrong 39% of the time (the interval is [0, 1] because a split answers about three items). **LTT abstains on
+everything, at every α in {0.1, 0.2, 0.3}**: the reader is right too rarely for 30 calibration items to certify any
+threshold.
+
+What this does and does not show:
+
+* It shows that the *gate* works as a hallucination filter even with a weak reader, and that its guarantee-free ERM
+  variant still violates α in 44% of splits.
+* It does **not** show what LTT can do with a strong reader. A 7B local model is a weak reader on this task, and the
+  correctness rule (token-F1 ≥ 0.5 and all key facts) is strict: terse answers such as `"52.8"` fail the key-fact
+  check when the reference is `52.8 nDCG@10`. I did not separate wrong answers from answers that are right but
+  too terse, so part of the 0.387 risk may be formatting rather than reasoning.
+* The standard-RAG row answers only 88% of questions even though its reader is forced; the remaining 12% are empty or
+  unparseable outputs.
 
 ## Findings and limitations
 
@@ -308,10 +340,12 @@ is the missing piece for a fair LTT result.
 - **A stronger reranker did not help retrieval.** The off-the-shelf MS MARCO cross-encoder is
   slightly *worse* than hybrid retrieval on this numeric, entity-heavy corpus (MRR −0.038). Its
   logit is still a useful abstention signal.
-- **Reader is still a mock in the end-to-end runs.** It can't do arithmetic (0/20 reasoning
-  items right, 30/50 factoid items), so end-to-end accuracy is a floor and LTT's low coverage
-  there mostly reflects the reader. The relative conclusions about ERM vs LTT and gating vs
-  self-abstention are what that benchmark supports.
+- **The reader limits the guarantee.** With the mock reader (0/20 reasoning items, 30/50 factoid) and with a local
+  Qwen2.5-7B reader (0/20 reasoning, 23/50 factoid) LTT abstained almost always at α = 0.2, because certifying it
+  needs enough error-free answered calibration items. Both are weak readers. Whether a stronger LLM (for example
+  Claude) changes this is untested here: it needs an API key I did not use.
+- **The gate is a good hallucination filter regardless.** Hallucination on unanswerable questions falls from 0.60–1.00
+  to 0.00–0.04 with every reader tried, at the price of low coverage.
 - **Small samples.** 100 items and calibration folds of about 30 make intervals wide; treat
   differences smaller than the intervals as unresolved.
 - **Synthetic data.** The ground truth comes from a fact table, which makes it exact, but
@@ -496,7 +530,7 @@ Dockerfile      CPU image (offline backends by default; --build-arg WITH_MODELS=
 
 ## Roadmap
 Phases 0–7 are complete; see [ROADMAP.md](ROADMAP.md). Next steps:
-- Done: retrieval and abstention with real models (bge-small, MS MARCO cross-encoder). Remaining: the end-to-end run with an LLM reader (Claude or an OpenAI-compatible model).
+- Done: retrieval and abstention with real models (bge-small, MS MARCO cross-encoder). Done as well: an end-to-end run with a local 7B reader (Qwen2.5 via Ollama). Remaining: a stronger reader (Claude or a larger model) and more calibration data.
 - A larger LLM-generated eval set over the arXiv corpus, with paper-disjoint splits, so LTT can
   certify α ≤ 0.1.
 - Conformal risk control (E[risk] ≤ α) as a less conservative alternative.
