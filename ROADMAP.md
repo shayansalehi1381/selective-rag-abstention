@@ -125,13 +125,32 @@
 - [ ] Conformal risk control (E[risk] ≤ α) as a less conservative alternative; NLI / self-consistency
       features once a generator exists
 
-## Phase 5: Generation and answer correctness
-- [ ] `src/pipeline.py`: an evidence-grounded generator with chunk citations
-- [ ] Scale the Phase 2 set (LLM engine) and split it into train (feature fitting) / **calibration** / test,
-      with no paper shared across splits
-- [ ] Replace the retrieval-grounded Phase 4 label with answer correctness, and re-calibrate
-- [ ] Answer correctness labels: exact match / token-F1, plus an LLM-judge for semantic equivalence
-- **Deliverable:** `data/eval/qa_{train,cal,test}.jsonl` and a data card describing how they were built
+## Phase 5: Generative reader and end-to-end selective RAG ✅
+- [x] `src/llm.py`: shared provider-agnostic client layer (Anthropic `claude-opus-5-5` with
+      server-side refusal fallback; OpenAI-compatible), moved out of the benchmark generator
+- [x] `src/generator.py`: citation-grounded reader. `GeneratedAnswer` is validated against the context:
+      citations must come from the context, quotes must be verbatim, an answer needs a citation, and an
+      abstention is exact. One retry with feedback, then `invalid_output` → abstain. A forced
+      (no-abstention) prompt serves as the standard-RAG baseline. `MockGenerator` is a deterministic
+      extractive offline reader, used as a logged fallback. Generations are cached in JSONL
+- [x] `src/pipeline.py`: `SelectiveRAGPipeline`, i.e. retrieval → rerank → τ gate → reader. It reports
+      which stage abstained (policy / generator), citations, quotes, per-stage latency and backends
+- [x] `eval/e2e_eval.py`: correctness = token-F1 ≥ 0.5 **and** key-fact match (EM, F1 and key-fact are also
+      reported). Standard RAG, RAG + self-abstention, selective RAG (ERM / LTT) and selective + self are
+      compared on 200 splits. The gate is recalibrated on end-to-end correctness; reported: hallucination
+      rate, selective risk, unconditional violation rate, and per-split paired Δ vs standard RAG
+- **Result (offline: hashing + mock reranker + mock extractive reader; α = 0.2):**
+  - Standard RAG answers every unanswerable question (hallucination rate **1.00**, selective risk 0.71).
+  - Reader self-abstention alone cuts hallucination to 0.27.
+  - The **τ gate (ERM) cuts it to 0.05** and selective risk to 0.17, at coverage 0.28, with lower
+    hallucination in 100% of splits. But ERM's risk exceeds α in 41% of splits.
+  - **LTT never violates (0–1% of splits ≤ δ)** but abstains on almost everything: only ~30% of
+    items are answered correctly by the mock reader, so ≥ 11 error-free calibration answers are rarely
+    available.
+  - The mock reader gets 30/50 factoid items right, and 0/20 reasoning items (no arithmetic).
+- [ ] Run with a real LLM reader (`--generator anthropic --strict-generator`) and real models
+- [ ] Scale the eval set (Phase 2 LLM engine), with no paper shared across splits, so LTT can certify α ≤ 0.2
+- [ ] LLM-judge for semantic answer equivalence; NLI answer–evidence entailment as an abstention feature
 
 ## Phase 6: Evaluation
 - [ ] `eval/evaluate.py`:

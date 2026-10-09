@@ -69,19 +69,29 @@ def make_chunks(texts: Sequence[str], arxiv_id: str = "0000.00000v1", title: str
     return chunks
 
 
-@pytest.fixture
-def no_model_packages(monkeypatch):
-    """Simulate an environment without sentence-transformers / torch (imports raise ImportError)."""
+def _block_imports(monkeypatch, blocked: set[str]) -> None:
     import builtins
 
     real_import = builtins.__import__
 
     def guarded(name, *args, **kwargs):
-        if name.split(".")[0] in {"sentence_transformers", "torch"}:
+        if name.split(".")[0] in blocked:
             raise ImportError(f"No module named {name!r}")
         return real_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", guarded)
+
+
+@pytest.fixture
+def no_model_packages(monkeypatch):
+    """Simulate an environment without sentence-transformers / torch (imports raise ImportError)."""
+    _block_imports(monkeypatch, {"sentence_transformers", "torch"})
+
+
+@pytest.fixture
+def no_llm_sdk(monkeypatch):
+    """Simulate an environment without the anthropic / openai SDKs."""
+    _block_imports(monkeypatch, {"anthropic", "openai"})
 
 
 @pytest.fixture

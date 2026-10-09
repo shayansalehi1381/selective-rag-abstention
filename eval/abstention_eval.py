@@ -271,6 +271,8 @@ def run_abstention_benchmark(
                     "cal_coverage": _summary([o["cal_coverage"] for o in outs]),
                     "validity_rate": (float(np.mean([o["test_risk"] <= alpha + 1e-12 for o in answered]))
                                       if answered else None),
+                    "violation_rate": float(np.mean([o["test_coverage"] > 0 and o["test_risk"] > alpha + 1e-12
+                                                     for o in outs])) if outs else None,
                     "abstain_all_rate": float(np.mean([o["abstain_all"] for o in outs])) if outs else None,
                     "abstain_reasons": sorted({o["reason"] for o in outs if o["reason"]}),
                 }
@@ -366,19 +368,22 @@ def render_markdown(report: dict) -> str:
 
     lines += ["", f"## Risk control (combined model, δ = {cfg['delta']})", "",
               "ERM picks the largest calibration coverage with empirical risk ≤ α (no guarantee). "
-              "LTT gives P(risk ≤ α) ≥ 1 − δ, testing a coverage grid fixed on the train split. *Validity* = share of "
-              "splits whose **test** risk is ≤ α, among splits that answered anything. Test folds are small, so this "
+              "LTT gives P(risk ≤ α) ≥ 1 − δ, testing a coverage grid fixed on the train split. *Violation rate* = "
+              "share of all splits whose **test** risk exceeds α (abstaining on everything never violates); this is "
+              "what LTT bounds by δ. *Validity* = share of splits whose test risk is ≤ α, among splits that answered "
+              "anything. Test folds are small, so this "
               "is itself a noisy estimate. LTT needs at least n_min answered calibration items to certify anything: "
               + ", ".join(f"α={a}: n_min={n}" for a, n in cfg["ltt_min_answered"].items())
               + f" (calibration folds have ≈{round(ls['n'] * cfg['split_fractions'][1])} items).", "",
-              "| α | Method | Test coverage ↑ | Test selective risk | Validity | Abstain-all rate |",
-              "|---|---|---|---|---|---|"]
+              "| α | Method | Test coverage ↑ | Test selective risk | Violation rate (≤ δ for LTT) | Validity | "
+              "Abstain-all rate |",
+              "|---|---|---|---|---|---|---|"]
     combined = report["models"]["combined"]["thresholds"]
     for a_key, by_method in combined.items():
         for method, t in by_method.items():
             validity = "—" if t["validity_rate"] is None else f"{t['validity_rate']:.0%}"
             lines.append(f"| {a_key} | {method.upper()} | {_fmt(t['test_coverage'])} | {_fmt(t['test_risk'])} | "
-                         f"{validity} | {t['abstain_all_rate']:.0%} |")
+                         f"{t['violation_rate']:.1%} | {validity} | {t['abstain_all_rate']:.0%} |")
 
     lines += ["", "## Raw signals (all items, no fitting)", "",
               "AUROC of each raw feature (higher value = predicted safer). Below 0.5 means the signal points the "

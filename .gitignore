@@ -241,6 +241,8 @@ data/eval/retrieval_benchmark.*
 data/eval/abstention_benchmark.*
 data/eval/figures/
 data/eval/policy*.json
+data/eval/e2e_benchmark.*
+data/eval/generation_cache.jsonl
 
 # Model / tool caches
 .cache/

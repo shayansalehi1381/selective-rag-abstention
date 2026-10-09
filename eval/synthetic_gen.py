@@ -24,13 +24,12 @@ CLI::
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import random
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Iterable, Protocol, Sequence
+from typing import Any, Callable, Iterable, Sequence
 
 from pydantic import BaseModel, ValidationError
 
@@ -51,6 +50,13 @@ from src.data_loader import (
     chunk_document,
     load_chunks_jsonl,
     save_chunks_jsonl,
+)
+from src.llm import (  # noqa: F401  (re-exported for backwards compatibility)
+    AnthropicClient,
+    LLMClient,
+    LLMRefusalError,
+    OpenAICompatibleClient,
+    extract_json,
 )
 from src.retriever import tokenize
 
@@ -663,80 +669,6 @@ class ExtractiveCorpusEngine:
 # ---------------------------------------------------------------------------
 
 
-class LLMClient(Protocol):
-    name: str
-
-    def complete(self, system: str, prompt: str, *, temperature: float | None, max_tokens: int) -> str: ...
-
-
-class LLMRefusalError(RuntimeError):
-    pass
-
-
-class AnthropicClient:
-    """Anthropic Messages API adapter (``pip install anthropic``).
-
-    Current Claude models reject sampling parameters such as ``temperature`` (HTTP 400)
-    and the 1.x SDK no longer exposes them, so ``temperature`` is sent (via
-    ``extra_body``) only when ``supports_temperature=True`` is set for an older model. Diversity otherwise comes from varied prompts and sampled chunks. The
-    server-side refusal fallback is enabled, so a declined request is retried on a
-    fallback model in the same call.
-    """
-
-    def __init__(self, model: str = "claude-opus-5-5", *, supports_temperature: bool = False,
-                 client: Any = None) -> None:
-        self.model = model
-        self.name = f"anthropic:{model}"
-        self.supports_temperature = supports_temperature
-        if client is None:
-            import anthropic
-
-            client = anthropic.Anthropic()
-        self._client = client
-
-    def complete(self, system: str, prompt: str, *, temperature: float | None, max_tokens: int) -> str:
-        kwargs: dict[str, Any] = {}
-        if self.supports_temperature and temperature is not None:
-            # The 1.x SDK no longer exposes sampling parameters; legacy models still
-            # accept them on the wire, so send the field through ``extra_body``.
-            kwargs["extra_body"] = {"temperature": temperature}
-        response = self._client.beta.messages.create(
-            model=self.model,
-            max_tokens=max_tokens,
-            system=system,
-            messages=[{"role": "user", "content": prompt}],
-            betas=["server-side-fallback-2026-07-01"],
-            fallbacks="default",
-            **kwargs,
-        )
-        if response.stop_reason == "refusal":
-            raise LLMRefusalError(f"{self.model} declined the request")
-        return "".join(block.text for block in response.content if block.type == "text")
-
-
-class OpenAICompatibleClient:
-    """Chat Completions adapter (``pip install openai``) for OpenAI, vLLM, Ollama and similar servers."""
-
-    def __init__(self, model: str, *, base_url: str | None = None, client: Any = None) -> None:
-        self.model = model
-        self.name = f"openai:{model}"
-        if client is None:
-            from openai import OpenAI
-
-            client = OpenAI(base_url=base_url)
-        self._client = client
-
-    def complete(self, system: str, prompt: str, *, temperature: float | None, max_tokens: int) -> str:
-        kwargs: dict[str, Any] = {} if temperature is None else {"temperature": temperature}
-        response = self._client.chat.completions.create(
-            model=self.model,
-            max_tokens=max_tokens,
-            messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
-            **kwargs,
-        )
-        return response.choices[0].message.content or ""
-
-
 PROMPT_VERSION = "v1"
 SYSTEM_PROMPT = (
     "You build evaluation data for a retrieval-augmented QA system over research papers. "
@@ -810,19 +742,6 @@ class _Judgement(BaseModel):
     answerable: bool
     chunk_id: str | None = None
     rationale: str = ""
-
-
-def extract_json(text: str) -> dict[str, Any]:
-    """Return the first JSON object in ``text`` (models sometimes wrap JSON in prose or fences)."""
-    decoder = json.JSONDecoder()
-    for start in (i for i, ch in enumerate(text) if ch == "{"):
-        try:
-            obj, _ = decoder.raw_decode(text, start)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(obj, dict):
-            return obj
-    raise ValueError("no JSON object found in model output")
 
 
 def _norm(text: str) -> str:
