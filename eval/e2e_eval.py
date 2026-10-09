@@ -37,9 +37,10 @@ import logging
 import math
 import re
 import string
+import sys
 from collections import Counter
 from pathlib import Path
-from typing import Sequence
+from typing import Callable, Sequence
 
 import numpy as np
 
@@ -131,8 +132,20 @@ def is_correct(prediction: str, reference: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def score_items(eval_set: EvalSet, retriever, generator: Generator, *, k_ctx: int = 3, top_k: int = 10) -> list[dict]:
-    """Retrieval, features and both reader calls for every item, run once."""
+def stderr_progress(label: str) -> Callable[[int, int], None]:
+    """A progress callback that prints a one-line counter to stderr (every item, so slow readers show life)."""
+    def show(done: int, total: int) -> None:
+        end = "\n" if done == total else ""
+        print(f"\r{label}: {done}/{total}", end=end, file=sys.stderr, flush=True)
+    return show
+
+
+def score_items(eval_set: EvalSet, retriever, generator: Generator, *, k_ctx: int = 3, top_k: int = 10,
+                progress: Callable[[int, int], None] | None = None) -> list[dict]:
+    """Retrieval, features and both reader calls for every item, run once.
+
+    ``progress(done, total)`` is called after each item (a slow LLM reader takes minutes).
+    """
     rows = []
     for item in eval_set.items:
         ev = extract_features(item.question, retriever, k_ctx=k_ctx, top_k=top_k)
@@ -157,6 +170,8 @@ def score_items(eval_set: EvalSet, retriever, generator: Generator, *, k_ctx: in
                 entry["correct"] = False  # an answer to an unanswerable item, or no answer
             row[mode] = entry
         rows.append(row)
+        if progress:
+            progress(len(rows), len(eval_set.items))
     return rows
 
 
@@ -470,7 +485,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc
     try:
-        rows = score_items(eval_set, retriever, generator, k_ctx=args.k_ctx, top_k=args.top_k)
+        rows = score_items(eval_set, retriever, generator, k_ctx=args.k_ctx, top_k=args.top_k,
+                           progress=stderr_progress("reading eval items"))
     except RuntimeError as exc:
         raise SystemExit(f"{exc}\nSet ANTHROPIC_API_KEY / OPENAI_API_KEY (or `ant auth login`), or drop "
                          "--strict-generator to use the offline mock reader.") from exc

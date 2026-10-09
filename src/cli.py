@@ -62,7 +62,7 @@ def apply_offline(args: argparse.Namespace) -> None:
 
 def build(args: argparse.Namespace) -> Built:
     """Build the pipeline and its gate (from ``--policy``, startup calibration, or none)."""
-    from eval.e2e_eval import fit_e2e_policy, score_items
+    from eval.e2e_eval import fit_e2e_policy, score_items, stderr_progress
     from eval.evaluate import build_pipeline
     from eval.schemas import EvalSet, corpus_fingerprint
     from src.data_loader import load_chunks_jsonl
@@ -108,9 +108,12 @@ def build(args: argparse.Namespace) -> Built:
             cal_retriever = make_retriever(load_chunks_jsonl(eval_set.corpus.path))
         logger.info("calibrating the gate (%s, α=%g) on %d eval items", args.calibrate, args.alpha,
                     len(eval_set.items))
-        rows = score_items(eval_set, cal_retriever, generator, k_ctx=args.k_ctx)
+        rows = score_items(eval_set, cal_retriever, generator, k_ctx=args.k_ctx,
+                           progress=stderr_progress("calibrating the gate (reader runs on the eval items)"))
         policy = fit_e2e_policy(rows, eval_set, reader="forced" if args.forced_reader else "free",
                                 method=args.calibrate, alpha=args.alpha, delta=args.delta)
+    if policy is not None and args.save_policy and not args.policy:
+        print(f"saved policy to {policy.save(args.save_policy)}", file=sys.stderr)
     if policy is not None and math.isinf(policy.tau) and policy.tau > 0:
         warnings.append("τ = ∞: no threshold could be certified on the calibration data, so every query "
                         "will be abstained. Use --calibrate erm, a larger α, or more calibration data")
@@ -344,10 +347,13 @@ def _build_parser() -> argparse.ArgumentParser:
         p.add_argument("--corpus", type=Path, default=None, help="chunks.jsonl to query (default: the eval corpus)")
         p.add_argument("--eval-set", type=Path, default=DEFAULT_EVAL_SET, help="used to calibrate the gate")
         gate = p.add_mutually_exclusive_group()
-        gate.add_argument("--policy", type=Path, default=None, help="saved AbstentionPolicy JSON")
+        gate.add_argument("--policy", type=Path, default=None,
+                          help="saved AbstentionPolicy JSON (skips the slow calibration)")
         gate.add_argument("--no-gate", action="store_true", help="standard RAG: never abstain before reading")
         p.add_argument("--calibrate", choices=("erm", "ltt"), default="erm",
                        help="how to choose τ when no --policy is given (default erm: no guarantee)")
+        p.add_argument("--save-policy", type=Path, default=None,
+                       help="after calibrating, save the gate here; reuse it later with --policy")
         p.add_argument("--alpha", type=float, default=0.2, help="target selective risk")
         p.add_argument("--delta", type=float, default=0.1, help="LTT failure probability")
         p.add_argument("--forced-reader", action="store_true", help="reader may not abstain (standard-RAG reader)")
